@@ -58,7 +58,7 @@ export function StaffView() {
           <p className="eyebrow">Center operations</p>
           <h2>Staff · packet documents</h2>
           <p className="section-lead">
-            Review document status for the current packet and upload any missing files at a later date. Uploads are saved to this packet (demo stores file names in this browser).
+            Review document status for the current packet and upload any missing files at a later date.
           </p>
         </div>
 

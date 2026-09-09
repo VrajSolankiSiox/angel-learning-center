@@ -10,7 +10,6 @@ export function LocationGrid() {
   return (
     <div className="location-grid" id="locationGrid">
       {locations.map((loc) => {
-        const routeCount = (ALC_CONFIG.transport?.schools?.[loc.id] || []).length;
         const isSelected = loc.id === selectedLocationId;
 
         return (
@@ -25,8 +24,6 @@ export function LocationGrid() {
             <span className="loc-address">{loc.address}</span>
             <span className="loc-meta">{loc.phone}</span>
             <span className="loc-meta">{loc.hours || ""}</span>
-            <span className="loc-inbox">{loc.inbox}</span>
-            <span className="loc-badge">{routeCount} school routes</span>
           </button>
         );
       })}

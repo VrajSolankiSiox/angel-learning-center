@@ -441,6 +441,63 @@ main,
 
 .top-nav a:hover { color: var(--blue); }
 
+.top-nav .btn-start-over {
+  background: #fff;
+  color: var(--navy);
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.95rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(38, 54, 116, 0.08);
+}
+
+.top-nav .btn-start-over:hover {
+  background: #f7f9fc;
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(26, 31, 51, 0.48);
+  backdrop-filter: blur(2px);
+}
+
+.modal-dialog {
+  width: min(100%, 28rem);
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.5rem 1.25rem;
+}
+
+.modal-title {
+  margin: 0 0 0.65rem;
+  font-size: 1.25rem;
+  color: var(--navy);
+}
+
+.modal-message {
+  margin: 0 0 1.35rem;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
 .lang-toggle {
   display: inline-flex;
   border: 1px solid var(--line);

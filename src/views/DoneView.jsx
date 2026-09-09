@@ -37,8 +37,7 @@ export function DoneView() {
           <div>
             <strong data-i18n="doneStrong">{t("doneStrong") || "Packet ready for the center"}</strong>
             <span data-i18n="doneText">
-              {t("doneText") ||
-                "No login. Prefill packet emails the center only (no parent copy). DocuSign seals signatures when the account is connected."}
+              {t("doneText") || "Download your completed forms below and bring them to your center."}
             </span>
           </div>
         </div>
@@ -49,7 +48,7 @@ export function DoneView() {
         <h2 data-i18n="doneTitle">{t("doneTitle") || "You’re all set"}</h2>
         <p className="section-lead" data-i18n="doneLead">
           {t("doneLead") ||
-            "Fill online once → completed packet goes to the front desk inbox for your location. No parent account."}
+            "Review your checklist, download the packet PDF, and submit it to your Angel Learning Center location."}
         </p>
 
         <div className="mail-summary" id="mailSummary">
@@ -64,7 +63,7 @@ export function DoneView() {
           <div className="mail-row">
             <small data-i18n="emailAttachments">{t("emailAttachments") || "ATTACHMENTS"}</small>
             <strong id="doneAttachNote">
-              Download one combined prefilled packet PDF below (center email wiring is next — not auto-sent yet)
+              {t("emailAttachmentList") || "Download your completed enrollment packet PDF below"}
             </strong>
           </div>
         </div>

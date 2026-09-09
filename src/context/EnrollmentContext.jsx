@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import ALC_CONFIG from "../config";
-import { ALL_FORMS, I18N, SAMPLE } from "../constants";
+import { ALL_FORMS, I18N } from "../constants";
 import { needsEmergencyMedicalForm as checkEmergencyMedical } from "../utils/programSelection";
 import { uppercaseFormPayload } from "../utils/formValues";
 
@@ -45,6 +45,7 @@ export function EnrollmentProvider({ children }) {
     return h;
   });
   const [toast, setToast] = useState({ message: "", visible: false });
+  const [confirmDialog, setConfirmDialog] = useState({ open: false });
 
   // Sync state to localStorage
   useEffect(() => {
@@ -90,6 +91,19 @@ export function EnrollmentProvider({ children }) {
       setToast((prev) => ({ ...prev, visible: false }));
     }, 2400);
   }, []);
+
+  const closeConfirm = useCallback(() => {
+    setConfirmDialog({ open: false });
+  }, []);
+
+  const showConfirm = useCallback((options) => {
+    setConfirmDialog({ open: true, ...options });
+  }, []);
+
+  const confirmDialogAction = useCallback(() => {
+    confirmDialog.onConfirm?.();
+    setConfirmDialog({ open: false });
+  }, [confirmDialog]);
 
   const t = useCallback(
     (key) => {
@@ -399,32 +413,19 @@ export function EnrollmentProvider({ children }) {
     [applyCarryForward]
   );
 
-  const loadSample = useCallback(() => {
-    setState({
-      data: JSON.parse(JSON.stringify(SAMPLE)),
-      completed: {
-        enrollment: true,
-        financial: true,
-        transport: true,
-        emergency: true,
-        ies: true,
-        handbook: true,
-        photo: true,
-        uploads: true,
+  const resetPacket = useCallback(() => {
+    showConfirm({
+      title: t("resetPacketTitle"),
+      message: t("confirmReset"),
+      confirmLabel: t("resetPacketConfirm"),
+      cancelLabel: t("cancel"),
+      onConfirm: () => {
+        setState({ completed: {}, data: {}, locationId: "savannah", siblings: [], flowMode: "full" });
+        showToast(t("toastReset"));
+        navigateTo("home");
       },
-      locationId: "savannah",
-      siblings: [],
     });
-    showToast(t("toastSample"));
-    navigateTo("packet");
-  }, [navigateTo, showToast, t]);
-
-  const resetDemo = useCallback(() => {
-    if (!window.confirm(t("confirmReset"))) return;
-    setState({ completed: {}, data: {}, locationId: "savannah", siblings: [], flowMode: "full" });
-    showToast(t("toastReset"));
-    navigateTo("home");
-  }, [navigateTo, showToast, t]);
+  }, [navigateTo, showConfirm, showToast, t]);
 
   const addSibling = useCallback(() => {
     setState((prev) => {
@@ -533,6 +534,10 @@ export function EnrollmentProvider({ children }) {
     navigateTo,
     toast,
     showToast,
+    confirmDialog,
+    closeConfirm,
+    confirmDialogAction,
+    showConfirm,
     t,
     selectedLocationId,
     activeLocation,
@@ -548,8 +553,7 @@ export function EnrollmentProvider({ children }) {
     applyCarryForward,
     saveForm,
     autoSaveForm,
-    loadSample,
-    resetDemo,
+    resetPacket,
     addSibling,
     uploadFile,
     flowMode: state.flowMode,

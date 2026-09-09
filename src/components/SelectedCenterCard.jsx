@@ -1,14 +1,9 @@
 import React from "react";
-import ALC_CONFIG from "../config";
 import { useEnrollment } from "../context/EnrollmentContext";
 
 export function SelectedCenterCard() {
-  const { activeLocation, navigateTo, startWaitlistFlow, startFullEnrollment, setFullFlowMode } = useEnrollment();
-
+  const { activeLocation, startWaitlistFlow, startFullEnrollment } = useEnrollment();
   if (!activeLocation || !activeLocation.id) return null;
-
-  const routeCount = (ALC_CONFIG.transport?.schools?.[activeLocation.id] || []).length;
-  const ccList = (ALC_CONFIG.email?.cc || []).join(", ");
 
   return (
     <div className="selected-center" id="selectedCenterCard">
@@ -18,9 +13,11 @@ export function SelectedCenterCard() {
         {activeLocation.address} · {activeLocation.phone}
         {activeLocation.hours ? ` · ${activeLocation.hours}` : ""}
       </p>
-      <p id="selCenterInbox" className="center-inbox">
-        Forms email To: {activeLocation.inbox} · CC: {ccList} · {routeCount} bus schools
-      </p>
+      {activeLocation.inbox ? (
+        <p id="selCenterInbox" className="center-inbox">
+          Questions? Email {activeLocation.inbox}
+        </p>
+      ) : null}
       <div className="hero-cta">
         {/* <a
           href="#packet"

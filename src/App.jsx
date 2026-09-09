@@ -1,8 +1,8 @@
 import React from "react";
-import Banner from "./components/Banner";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Toast from "./components/Toast";
+import ConfirmModal from "./components/ConfirmModal";
 
 import HomeView from "./views/HomeView";
 import PacketView from "./views/PacketView";
@@ -67,13 +67,13 @@ export function App() {
 
   return (
     <>
-      <Banner />
       <div id="appShell" className="app-shell">
         <Header />
         <main>{renderActiveView()}</main>
         <Footer />
       </div>
       <Toast />
+      <ConfirmModal />
     </>
   );
 }

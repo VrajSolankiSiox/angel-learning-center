@@ -2,7 +2,7 @@ import React from "react";
 import { useEnrollment } from "../context/EnrollmentContext";
 
 export function Header() {
-  const { resetDemo } = useEnrollment();
+  const { resetPacket, t } = useEnrollment();
 
   return (
     <header className="topbar">
@@ -21,10 +21,8 @@ export function Header() {
       <nav className="top-nav">
         <a href="#home" data-nav="home">Home</a>
         <a href="#packet" data-nav="packet">Forms</a>
-        <a href="#staff" data-nav="staff">Staff</a>
-        <a href="mockups.html">Email flow</a>
-        <button type="button" className="btn btn-ghost" id="resetDemo" onClick={resetDemo}>
-          Reset packet
+        <button type="button" className="btn btn-start-over" id="resetPacket" onClick={resetPacket}>
+          {t("resetPacket") || "Start over"}
         </button>
       </nav>
     </header>

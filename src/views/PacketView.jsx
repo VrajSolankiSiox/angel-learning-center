@@ -4,7 +4,7 @@ import FormList from "../components/FormList";
 import { useEnrollment } from "../context/EnrollmentContext";
 
 export function PacketView() {
-  const { loadSample, t } = useEnrollment();
+  const { t } = useEnrollment();
 
   return (
     <section id="view-packet" className="view is-active">
@@ -16,17 +16,6 @@ export function PacketView() {
         <p className="section-lead" data-i18n="packetLead">
           {t("packetLead")}
         </p>
-        <div className="hero-cta" style={{ marginBottom: "1rem" }}>
-          <button
-            type="button"
-            className="btn btn-green"
-            id="loadSamplePacket"
-            data-i18n="ctaSample"
-            onClick={loadSample}
-          >
-            {t("ctaSample") || "Load sample child"}
-          </button>
-        </div>
         <ProgressBar />
       </div>
       <FormList id="packetList" />

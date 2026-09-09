@@ -49,7 +49,7 @@ export const ALC_CONFIG = {
   },
 
   v1Locations: ["savannah", "dawsonville", "smarr", "valdosta"],
-  approvalDemo: true,
+  approvalDemo: false,
 
   locations: {
     savannah: {
