@@ -8,6 +8,7 @@ import {
   FormField,
   CheckboxField,
 } from "./PdfShared";
+import { resolveResponsiblePartyName } from "../utils/formValues";
 
 const LEGAL_TEXT = [
   "Financial responsibility. I acknowledge that I am the individual legally and financially responsible for payment of all tuition, registration fees, late fees, returned payment fees, activity fees, and any other charges incurred for my child's enrollment at Angel Learning Center. I understand that tuition is due regardless of my child's attendance unless otherwise provided in the Center's written policies.",
@@ -16,11 +17,16 @@ const LEGAL_TEXT = [
   "Acknowledgment. I certify that the information provided above is true and correct. I have read this Agreement, understand my financial obligations, and voluntarily agree to be personally responsible for all amounts owed to Angel Learning Center. I understand that this Agreement is a legally binding contract and may be used as evidence in any collection or legal proceeding arising from unpaid tuition or fees.",
 ];
 
-export function FinancialPdf({ data = {}, location = {} }) {
+export function FinancialAgreementPage({ data = {}, location = {} }) {
   const fin = data.financial || {};
+  const enrollment = data.enrollment || {};
+  const responsibleName = resolveResponsiblePartyName(fin, enrollment) || fin.rpName;
+  const printName =
+    resolveResponsiblePartyName({ rpName: fin.finPrintName }, enrollment) || fin.finPrintName || responsibleName;
+  const signature =
+    resolveResponsiblePartyName({ rpName: fin.finSignature }, enrollment) || fin.finSignature || responsibleName;
 
   return (
-    <Document>
       <Page size="LETTER" style={pdfStyles.page}>
         <PdfHeader
           title="Financial Responsibility & Tuition Agreement"
@@ -29,7 +35,7 @@ export function FinancialPdf({ data = {}, location = {} }) {
 
         <PdfSectionTitle title="Responsible Party" />
         <View style={pdfStyles.formRow}>
-          <FormField label="Full Legal Name" value={fin.rpName} flex={4} />
+          <FormField label="Full Legal Name" value={responsibleName} flex={4} />
           <FormField label="Date of Birth" value={fin.rpDob} flex={2} />
         </View>
         <View style={pdfStyles.formRow}>
@@ -90,16 +96,23 @@ export function FinancialPdf({ data = {}, location = {} }) {
             />
           </View>
           <View style={pdfStyles.formRow}>
-            <FormField label="Printed Name" value={fin.finPrintName} flex={3} />
+            <FormField label="Printed Name" value={printName} flex={3} />
             <FormField label="Date" value={fin.finSignDate} flex={2} />
           </View>
           <View style={pdfStyles.formRow}>
-            <FormField label="E-Signature" value={fin.finSignature} flex={1} />
+            <FormField label="E-Signature" value={signature} flex={1} />
           </View>
         </View>
 
         <PdfFooter />
       </Page>
+  );
+}
+
+export function FinancialPdf({ data = {}, location = {} }) {
+  return (
+    <Document>
+      <FinancialAgreementPage data={data} location={location} />
     </Document>
   );
 }

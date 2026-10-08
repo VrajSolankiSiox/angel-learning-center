@@ -10,6 +10,7 @@ import {
   toggleProgram,
   validatePrograms,
 } from "../utils/programSelection";
+import { normalizeChildGender } from "../utils/formValues";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -44,7 +45,7 @@ export function EnrollmentView() {
     childGrade: savedData.childGrade || "",
     startDate: savedData.startDate || "",
     childDob: savedData.childDob || "",
-    childGender: savedData.childGender || "",
+    childGender: normalizeChildGender(savedData.childGender),
     childAddress: savedData.childAddress || "",
     childCity: savedData.childCity || "",
     childZip: savedData.childZip || "",
@@ -56,6 +57,8 @@ export function EnrollmentView() {
     momEmail: savedData.momEmail || "",
     momEmployer: savedData.momEmployer || "",
     momOccupation: savedData.momOccupation || "",
+    momWorkAddress: savedData.momWorkAddress || "",
+    momMarital: savedData.momMarital || "",
     momCustodial: !!savedData.momCustodial,
     dadFirst: savedData.dadFirst || "",
     dadMI: savedData.dadMI || "",
@@ -64,16 +67,20 @@ export function EnrollmentView() {
     dadEmail: savedData.dadEmail || "",
     dadEmployer: savedData.dadEmployer || "",
     dadOccupation: savedData.dadOccupation || "",
+    dadWorkAddress: savedData.dadWorkAddress || "",
+    dadMarital: savedData.dadMarital || "",
     dadCustodial: !!savedData.dadCustodial,
     ec1Name: savedData.ec1Name || "",
     ec1Home: savedData.ec1Home || "",
     ec1Work: savedData.ec1Work || "",
     ec1Cell: savedData.ec1Cell || "",
+    ec1Address: savedData.ec1Address || "",
     ec1Rel: savedData.ec1Rel || "",
     ec2Name: savedData.ec2Name || "",
     ec2Home: savedData.ec2Home || "",
     ec2Work: savedData.ec2Work || "",
     ec2Cell: savedData.ec2Cell || "",
+    ec2Address: savedData.ec2Address || "",
     ec2Rel: savedData.ec2Rel || "",
     careFrom: savedData.careFrom || "",
     careTo: savedData.careTo || "",
@@ -111,6 +118,7 @@ export function EnrollmentView() {
               .map((s) => s.trim())
               .filter(Boolean)
       ),
+      childGender: normalizeChildGender(en.childGender),
     }));
   }, [state.data?.enrollment, selectedLocationId]);
 
@@ -269,8 +277,8 @@ export function EnrollmentView() {
             programs (you can switch between those three only). Summer Camp and Holiday Weeks are selected together.
           </p>
           <p className="hint">
-            Transportation and Vehicle Emergency Medical forms appear when Pre-K, care programs, or summer/holiday
-            programs are selected.
+            The Transportation form appears only when Before care, After care, or Before &amp; after care is selected.
+            Vehicle Emergency Medical appears when Pre-K, care programs, or summer/holiday programs are selected.
           </p>
           {programError ? (
             <p className="hint" style={{ color: "var(--danger, #b42318)" }} role="alert">
@@ -323,14 +331,10 @@ export function EnrollmentView() {
               <input name="childLast" value={formData.childLast} onChange={handleChange} required />
             </label>
           </div>
-          <div className="grid-3">
+          <div className="grid-2">
             <label>
               <span data-i18n="preferredName">{t("preferredName") || "Preferred name"}</span>
               <input name="childPreferred" value={formData.childPreferred} onChange={handleChange} />
-            </label>
-            <label>
-              <span data-i18n="gradeClass">{t("gradeClass") || "Grade / class"}</span>
-              <input name="childGrade" value={formData.childGrade} onChange={handleChange} />
             </label>
             {!isWaitlistFlow && (
               <label>
@@ -346,10 +350,10 @@ export function EnrollmentView() {
             </label>
             <label>
               <span data-i18n="gender">{t("gender") || "Gender"}</span>
-              <select name="childGender" value={formData.childGender} onChange={handleChange}>
+              <select name="childGender" value={formData.childGender} onChange={handleChange} required>
                 <option value="">Select</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
+                <option value="Boy">Boy</option>
+                <option value="Girl">Girl</option>
               </select>
             </label>
           </div>
@@ -419,6 +423,22 @@ export function EnrollmentView() {
               <input name="momOccupation" value={formData.momOccupation} onChange={handleChange} />
             </label>
           </div>
+          <label>
+            <span>Work address</span>
+            <input name="momWorkAddress" value={formData.momWorkAddress} onChange={handleChange} />
+          </label>
+          <label>
+            <span>Marital status</span>
+            <select name="momMarital" value={formData.momMarital} onChange={handleChange}>
+              <option value="">Select</option>
+              <option value="Married">Married</option>
+              <option value="Single">Single</option>
+              <option value="Divorced">Divorced</option>
+              <option value="Separated">Separated</option>
+              <option value="Widowed">Widowed</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
           <label className="check">
             <input
               type="checkbox"
@@ -465,6 +485,22 @@ export function EnrollmentView() {
               <input name="dadOccupation" value={formData.dadOccupation} onChange={handleChange} />
             </label>
           </div>
+          <label>
+            <span>Work address</span>
+            <input name="dadWorkAddress" value={formData.dadWorkAddress} onChange={handleChange} />
+          </label>
+          <label>
+            <span>Marital status</span>
+            <select name="dadMarital" value={formData.dadMarital} onChange={handleChange}>
+              <option value="">Select</option>
+              <option value="Married">Married</option>
+              <option value="Single">Single</option>
+              <option value="Divorced">Divorced</option>
+              <option value="Separated">Separated</option>
+              <option value="Widowed">Widowed</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
           <label className="check">
             <input
               type="checkbox"
@@ -503,6 +539,10 @@ export function EnrollmentView() {
               </label>
             </div>
             <label>
+              <span data-i18n="address">{t("address") || "Address"}</span>
+              <input name="ec1Address" value={formData.ec1Address} onChange={handleChange} required />
+            </label>
+            <label>
               <span data-i18n="relationship">{t("relationship") || "Relationship"}</span>
               <input
                 name="ec1Rel"
@@ -527,6 +567,10 @@ export function EnrollmentView() {
                 Cell <input type="tel" name="ec2Cell" value={formData.ec2Cell} onChange={handleChange} required />
               </label>
             </div>
+            <label>
+              <span data-i18n="address">{t("address") || "Address"}</span>
+              <input name="ec2Address" value={formData.ec2Address} onChange={handleChange} required />
+            </label>
             <label>
               <span data-i18n="relationship">{t("relationship") || "Relationship"}</span>
               <input

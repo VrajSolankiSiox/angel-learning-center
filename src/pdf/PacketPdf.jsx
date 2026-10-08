@@ -1,8 +1,36 @@
 import React from "react";
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import ALC_CONFIG from "../config";
-import { FONT, COLORS, SIGNATURE_FONT, PdfHeader, PdfFooter, getLogoUrl, getWatchMeGrowUrl, getProCareLogoUrl, formatPdfValue } from "./PdfShared";
+import {
+  FONT,
+  COLORS,
+  PdfHeader,
+  PdfFooter,
+  getLogoUrl,
+  getWatchMeGrowUrl,
+  getProCareLogoUrl,
+  formatPdfValue,
+  isSignatureFieldLabel,
+  formatSignatureValue,
+  PdfSignatureOnLine,
+} from "./PdfShared";
 import { collectBlankFields, groupBlankFields } from "./pdfBlankFields";
+import {
+  normalizeChildGender,
+  programSelectionLabel,
+  resolveResponsiblePartyName,
+  transportSchoolLabel,
+} from "../utils/formValues";
+import { FinancialAgreementPage } from "./FinancialPdf";
+import {
+  ParentPolicyAckPage1,
+  ParentPolicyAckPage2,
+  ParentPolicyAckPage3,
+} from "./ParentPolicyAckPdf";
+import { SafeSleepPage1, SafeSleepPage2 } from "./SafeSleepPdf";
+import { StrollerRidePage1, StrollerRidePage2 } from "./StrollerRidePdf";
+import { PdfCheckMark } from "./PdfCheckbox";
+import { WATCH_ME_GROW_ACK_ITEMS } from "../constants/watchMeGrowAck";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -252,6 +280,7 @@ function normalize(data = {}, location = {}) {
   const ies = data.ies || {};
   const hb = data.handbook || {};
   const ph = data.photo || {};
+  const pa = data.policyAck || {};
   const transportPerms = transportPermissionSource(tr);
   const loc = location || {};
   const motherName = oldFull(en, "mom");
@@ -292,14 +321,14 @@ function normalize(data = {}, location = {}) {
       employer: en.momEmployer,
       occupation: en.momOccupation,
       workPhone: "",
-      workAddress: "",
+      workAddress: en.momWorkAddress,
       workHours: "",
       custodial: !!en.momCustodial,
       ssn: "",
       email: en.momEmail,
       driversLicense: "",
       birthday: "",
-      maritalStatus: "",
+      maritalStatus: en.momMarital || "",
       signature: fin.finSignature || motherName,
       date: fin.finSignDate || hb.hbDate || ph.photoDate,
     },
@@ -315,20 +344,20 @@ function normalize(data = {}, location = {}) {
       employer: en.dadEmployer,
       occupation: en.dadOccupation,
       workPhone: "",
-      workAddress: "",
+      workAddress: en.dadWorkAddress,
       workHours: "",
       custodial: !!en.dadCustodial,
       ssn: "",
       email: en.dadEmail,
       driversLicense: "",
       birthday: "",
-      maritalStatus: "",
+      maritalStatus: en.dadMarital || "",
       signature: fatherName,
       date: fin.finSignDate || hb.hbDate || ph.photoDate,
     },
     tuition: {
       amount: en.tuitionAmount,
-      programs: Array.isArray(en.programs) ? en.programs.join(", ") : en.programs,
+      programs: programSelectionLabel(en.programs, ALC_CONFIG.programs),
       center: loc.name || loc.legalName || en.enLocation,
     },
     care: {
@@ -340,8 +369,8 @@ function normalize(data = {}, location = {}) {
       homeCareName: en.previousHomeCareName,
     },
     emergencyContacts: [
-      { name: en.ec1Name, homePhone: en.ec1Home, workPhone: en.ec1Work, cellPhone: en.ec1Cell, address: "", relationship: en.ec1Rel },
-      { name: en.ec2Name, homePhone: en.ec2Home, workPhone: en.ec2Work, cellPhone: en.ec2Cell, address: "", relationship: en.ec2Rel },
+      { name: en.ec1Name, homePhone: en.ec1Home, workPhone: en.ec1Work, cellPhone: en.ec1Cell, address: en.ec1Address, relationship: en.ec1Rel },
+      { name: en.ec2Name, homePhone: en.ec2Home, workPhone: en.ec2Work, cellPhone: en.ec2Cell, address: en.ec2Address, relationship: en.ec2Rel },
       { name: "", homePhone: "", workPhone: "", cellPhone: "", address: "", relationship: "" },
     ],
     medical: {
@@ -355,7 +384,11 @@ function normalize(data = {}, location = {}) {
       specialInfo: em.emSpecial,
     },
     transportation: {
-      selectedSchool: tr.trSchoolChoice,
+      selectedSchool: transportSchoolLabel(
+        tr.trLocation,
+        tr.trSchoolChoice,
+        ALC_CONFIG.transport?.schools
+      ),
       schoolAddress: tr.trSchoolAddress,
       approxMiles: tr.trMiles,
       pickupTime: tr.trPickupTime,
@@ -364,7 +397,8 @@ function normalize(data = {}, location = {}) {
       staffAuthorized: !!tr.trStaffAuth,
     },
     financial: {
-      responsibleParty: fin.rpName,
+      ...fin,
+      responsibleParty: resolveResponsiblePartyName(fin, en) || fin.rpName,
       driversLicense: fin.rpDl,
       state: fin.rpState,
       employer: fin.rpEmployer,
@@ -376,7 +410,8 @@ function normalize(data = {}, location = {}) {
       enrolledChild: fin.finChildName || childName,
       enrollmentDate: fin.finEnrollDate || en.startDate,
       agreed: !!fin.finAgree,
-      signature: fin.finSignature,
+      signature:
+        resolveResponsiblePartyName({ rpName: fin.finSignature }, en) || fin.finSignature,
       date: fin.finSignDate,
       cardholderName: fin.finCardholderName,
       cardNumber: fin.finCardNumber,
@@ -426,10 +461,38 @@ function normalize(data = {}, location = {}) {
     },
     mealBenefit: { acknowledged: !!ies.iesDownloadAck },
     parentHandbook: { acknowledged: !!hb.hbAgree },
+    policyAck: {
+      ppChildName: pa.ppChildName || childName,
+      ppChildDob: pa.ppChildDob || en.childDob,
+      ppParentName: pa.ppParentName || fin.rpName || motherName,
+      ppCenterLocation: pa.ppCenterLocation || loc.legalName || loc.name || "Angel Learning Center",
+      ppInitialsSleep: pa.ppInitialsSleep,
+      ppInitialsProhibited: pa.ppInitialsProhibited,
+      ppInitialsFamily: pa.ppInitialsFamily,
+      ppNeedsDiscussed: pa.ppNeedsDiscussed,
+      ppAgreedPractices: pa.ppAgreedPractices,
+      ppParentQuestions: pa.ppParentQuestions,
+      ppDirectorNotes: pa.ppDirectorNotes,
+      ppAckPolicies: !!pa.ppAckPolicies,
+      ppAckSafeSleep: !!pa.ppAckSafeSleep,
+      ppAckProgress: !!pa.ppAckProgress,
+      ppAckSpecialNeeds: !!pa.ppAckSpecialNeeds,
+      ppAckShakenBaby: !!pa.ppAckShakenBaby,
+      ppAckParticipation: !!pa.ppAckParticipation,
+      ppSignature: pa.ppSignature,
+      ppSignDate: pa.ppSignDate,
+      ppPrintName: pa.ppPrintName,
+      ppDirectorSignature: pa.ppDirectorSignature,
+      ppDirectorDate: pa.ppDirectorDate,
+      ppDirectorPrintTitle: pa.ppDirectorPrintTitle,
+    },
     signatures: {
-      mother: fin.finSignature || hb.hbSignature || ph.photoSignature || motherName,
+      mother:
+        [pa.ppSignature, fin.finSignature, hb.hbSignature, ph.photoSignature]
+          .map((raw) => (raw ? resolveResponsiblePartyName({ rpName: raw }, en) || raw : ""))
+          .find(Boolean) || motherName,
       father: fatherName,
-      date: fin.finSignDate || hb.hbDate || ph.photoDate,
+      date: pa.ppSignDate || fin.finSignDate || hb.hbDate || ph.photoDate,
     },
     _derived: { childName, addressLine },
   };
@@ -466,14 +529,19 @@ function BulletMark({ checked }) {
 }
 
 function FieldLine({ label, value, flex = 1, multiline = false }) {
+  const isSignature = isSignatureFieldLabel(label);
   return (
     <View style={[s.col, { flex, minWidth: 0 }]}>
       <Text style={enroll.inlineLabel}>{label}</Text>
-      <View style={[enroll.inlineValue, multiline ? s.multiline : null]}>
-        <Text style={enroll.valueText} wrap>
-          {val(value) || " "}
-        </Text>
-      </View>
+      {isSignature ? (
+        <PdfSignatureOnLine value={value} lineStyle={{ flex: 1, minWidth: 0 }} />
+      ) : (
+        <View style={[enroll.inlineValue, multiline ? s.multiline : null]}>
+          <Text style={enroll.valueText} wrap>
+            {val(value) || " "}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -528,14 +596,8 @@ function PacketPage({ title, children }) {
   );
 }
 
-function maritalChecks(person = {}) {
-  return (
-    <View style={[s.row, { flexWrap: "wrap" }]}>
-      {["Married", "Single", "Divorced", "Separated", "Widowed", "Other"].map((m) => (
-        <Checkbox key={m} label={m} checked={person.maritalStatus === m} />
-      ))}
-    </View>
-  );
+function maritalStatusField(person = {}) {
+  return <FieldLine label="Marital Status" value={person.maritalStatus} flex={1} />;
 }
 
 function GuardianBlock({ title, person = {} }) {
@@ -571,7 +633,7 @@ function GuardianBlock({ title, person = {} }) {
         <FieldLine label="Driver's License #" value={person.driversLicense} />
         <FieldLine label="Birthday" value={person.birthday} />
       </View>
-      {maritalChecks(person)}
+      {maritalStatusField(person)}
     </View>
   );
 }
@@ -651,9 +713,6 @@ const enroll = StyleSheet.create({
     fontSize: 10,
     color: "#0645AD",
     lineHeight: 1.05,
-  },
-  signatureValue: {
-    fontFamily: SIGNATURE_FONT,
   },
   checkboxText: {
     fontFamily: FONT,
@@ -1055,8 +1114,9 @@ const enroll = StyleSheet.create({
   },
   wmgHero: {
     alignItems: "center",
-    marginTop: 2,
-    marginBottom: 10,
+    marginTop: 4,
+    marginBottom: 14,
+    width: "100%",
   },
   wmgAlcLogo: {
     width: 108,
@@ -1065,8 +1125,8 @@ const enroll = StyleSheet.create({
     marginBottom: 6,
   },
   wmgLogo: {
-    width: 150,
-    height: 52,
+    width: 520,
+    height: 108,
     objectFit: "contain",
   },
   wmgTitle: {
@@ -1305,7 +1365,8 @@ const enroll = StyleSheet.create({
 function InlineField({ label, value, width, flex, grow = false }) {
   const normalizedLabel = String(label || "").trim();
   const labelText = /[:)]$/.test(normalizedLabel) ? normalizedLabel : `${normalizedLabel}:`;
-  const isSignature = /signature/i.test(normalizedLabel);
+  const isSignature = isSignatureFieldLabel(normalizedLabel);
+  const display = isSignature ? formatSignatureValue(value) || " " : val(value) || " ";
 
   return (
     <View
@@ -1317,20 +1378,29 @@ function InlineField({ label, value, width, flex, grow = false }) {
       ]}
     >
       {normalizedLabel ? <Text style={enroll.inlineLabel}>{labelText}</Text> : null}
-      <View style={[enroll.inlineValue, { flex: 1, minWidth: 0 }]}>
-        <Text style={[enroll.valueText, isSignature ? enroll.signatureValue : null]}>{val(value) || " "}</Text>
-      </View>
+      {isSignature ? (
+        <PdfSignatureOnLine value={value} lineStyle={{ flex: 1, minWidth: 0 }} />
+      ) : (
+        <View style={[enroll.inlineValue, { flex: 1, minWidth: 0 }]}>
+          <Text style={enroll.valueText}>{display}</Text>
+        </View>
+      )}
     </View>
   );
 }
 
 function StackField({ label, value, flex = 1, width }) {
+  const isSignature = isSignatureFieldLabel(label);
   return (
     <View style={[enroll.procareStackField, flex ? { flex, minWidth: 0 } : null, width ? { width } : null]}>
       <Text style={enroll.procareStackLabel}>{label}</Text>
-      <View style={enroll.procareStackValue}>
-        <Text style={enroll.valueText}>{val(value) || " "}</Text>
-      </View>
+      {isSignature ? (
+        <PdfSignatureOnLine value={value} lineStyle={{ width: "100%", minHeight: 20 }} />
+      ) : (
+        <View style={enroll.procareStackValue}>
+          <Text style={enroll.valueText}>{val(value) || " "}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -1354,61 +1424,19 @@ function splitCityStateZip(value = "") {
 
 function WmgNumberedField({ number, label, value }) {
   const labelText = /[:)]$/.test(String(label).trim()) ? label : `${label}:`;
+  const isSignature = isSignatureFieldLabel(label);
   return (
     <View style={enroll.wmgFamilyRow}>
       <Text style={enroll.wmgFamilyNum}>{number}.</Text>
       <View style={enroll.wmgFamilyField}>
         <Text style={enroll.wmgFamilyLabel}>{labelText}</Text>
-        <View style={[enroll.inlineValue, { flex: 1, minWidth: 0 }]}>
-          <Text style={enroll.valueText}>{val(value) || " "}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function getPolicyAckFields(d) {
-  const childName = d._derived?.childName || "";
-  const parentName =
-    d.financial?.responsibleParty ||
-    d.signatures?.mother ||
-    [d.mother?.firstName, d.mother?.mi, d.mother?.lastName].filter(Boolean).join(" ").trim();
-  return {
-    childName,
-    parentName,
-    signature: d.signatures?.mother || "",
-    date: d.signatures?.date || "",
-  };
-}
-
-function PolicyAckField({ label, value }) {
-  return (
-    <View style={enroll.policyAckFieldRow}>
-      <View style={enroll.inlineField}>
-        <Text style={enroll.inlineLabel}>{label}</Text>
-        <View style={[enroll.inlineValue, { flex: 1, minWidth: 0 }]}>
-          <Text style={enroll.valueText}>{val(value) || " "}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function PolicyAckNumberedItem({ number, text }) {
-  return (
-    <View style={enroll.policyAckNumberedRow}>
-      <Text style={enroll.policyAckNumber}>{number}.</Text>
-      <Text style={[enroll.permBody, { flex: 1, marginBottom: 0 }]}>{text}</Text>
-    </View>
-  );
-}
-
-function PolicyAckSigLine({ label, signature, date }) {
-  return (
-    <View style={enroll.policyAckSigBlock}>
-      <View style={enroll.permSigRow}>
-        <InlineField label={label} value={signature} flex={2.4} />
-        <InlineField label="Date" value={date} flex={1} />
+        {isSignature ? (
+          <PdfSignatureOnLine value={value} lineStyle={{ flex: 1, minWidth: 0 }} />
+        ) : (
+          <View style={[enroll.inlineValue, { flex: 1, minWidth: 0 }]}>
+            <Text style={enroll.valueText}>{val(value) || " "}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -1473,12 +1501,8 @@ function CompactGuardian({ title, person = {} }) {
         <InlineField label="Driver's License #" value={person.driversLicense} flex={1} />
         <InlineField label="Birthday" value={person.birthday} flex={0.9} />
       </View>
-      <View style={[enroll.lineRow, { flexWrap: "nowrap" }]}>
-        <Text style={enroll.inlineLabel}>Marital Status:</Text>
-        {["Married", "Single", "Divorced", "Separated", "Widowed"].map((m) => (
-          <InlineCheck key={m} label={m} checked={person.maritalStatus === m} />
-        ))}
-        <InlineCheck label="Other" checked={person.maritalStatus === "Other"} trailingLine />
+      <View style={enroll.lineRow}>
+        <InlineField label="Marital Status" value={person.maritalStatus} flex={1} />
       </View>
     </View>
   );
@@ -1511,13 +1535,10 @@ function Page1({ d, raw = {}, waitlistMode = false }) {
         <InlineField label="Last Name" value={child.lastName} flex={2.6} />
       </View>
       <View style={enroll.lineRow}>
-        <InlineField label="Name child prefers to be called" value={child.preferredName} flex={1.6} />
-        <InlineField label="Grade/Class" value={child.gradeClass} flex={1} />
+        <InlineField label="Name child prefers to be called" value={child.preferredName} flex={1} />
       </View>
       <View style={enroll.lineRow}>
-        <Text style={enroll.inlineLabel}>Gender:</Text>
-        <InlineCheck label="Male" checked={child.gender === "Male"} />
-        <InlineCheck label="Female" checked={child.gender === "Female"} />
+        <InlineField label="Gender" value={normalizeChildGender(child.gender)} flex={0.9} />
         <InlineField label="Date of Birth" value={child.dob} flex={1.15} />
         <InlineField label="Child’s SSN" value={child.ssn} flex={1.15} />
       </View>
@@ -1639,10 +1660,7 @@ function Page2({ d }) {
         <Text style={enroll.italicNote}>*cannot exceed more than 10hrs a day.*</Text>
       </View>
       <View style={enroll.lineRow}>
-        <Text style={enroll.inlineLabel}>Meals Served:</Text>
-        <InlineCheck label="Breakfast" checked={(d.care?.meals || []).includes("Breakfast")} />
-        <InlineCheck label="Lunch" checked={(d.care?.meals || []).includes("Lunch")} />
-        <InlineCheck label="PM Snack" checked={(d.care?.meals || []).includes("PM Snack")} />
+        <InlineField label="Meals Served" value={(d.care?.meals || []).join(", ")} flex={1} />
       </View>
       <Text style={enroll.subLabel}>Previous School Information:</Text>
       <View style={enroll.lineRow}>
@@ -1750,7 +1768,7 @@ function Page3({ d }) {
       {specialLines.map((line, idx) => (
         <View key={idx} style={enroll.lineRow}>
           <View style={[enroll.inlineValue, { flex: 1, minWidth: 0, marginRight: 12 }]}>
-            <Text style={enroll.valueText}>{idx === 0 ? line || " " : " "}</Text>
+            <Text style={enroll.valueText}>{idx === 0 ? val(line) || " " : " "}</Text>
           </View>
         </View>
       ))}
@@ -1787,24 +1805,15 @@ function Page4({ d, raw = {} }) {
     d.permissions?.transportConsent
   );
 
-  const photoItems = [
-    {
-      text: "I understand Angel Learning Center takes photographs of center events and classroom activities throughout the year.",
-      checked: !!(photoFlags.agree || photoFlags.classroom || photoFlags.family || photoFlags.web || photoFlags.marketing || photoFlags.none),
-    },
-    {
-      text: "I give permission to the Angel Learning Center to use these pictures for decorations, projects and to post to the center’s website and Facebook.",
-      checked: !!(photoFlags.classroom || photoFlags.family || photoFlags.web || photoFlags.marketing) && !photoFlags.none,
-    },
-    {
-      text: "Yes, I give permission for photographs to be taken and utilized by ALC.",
-      checked: !!(photoFlags.agree && !photoFlags.none),
-    },
-    {
-      text: "No, I do not give permission for photographs of any kind to be taken.",
-      checked: !!photoFlags.none,
-    },
-  ];
+  const photoGranted = !!(
+    (photoFlags.agree || photoFlags.classroom || photoFlags.family || photoFlags.web || photoFlags.marketing) &&
+    !photoFlags.none
+  );
+  const photoChoice = photoFlags.none
+    ? "No, I do not give permission for photographs of any kind to be taken."
+    : photoGranted
+      ? "Yes, I give permission for photographs to be taken and utilized by ALC."
+      : "";
 
   return (
     <Page size="LETTER" style={enroll.page}>
@@ -1815,14 +1824,22 @@ function Page4({ d, raw = {} }) {
       <Text style={enroll.permBody}>
         I give consent for my child to participate in the following water activities:
       </Text>
-      <PermissionCheckList items={waterItems} />
+      <PolicyBullets items={WATER_PERMISSION_FIELDS.map(({ label }) => label)} />
+      <PermissionCheckItem
+        label="I grant permission for all water activities listed above."
+        checked={waterItems.length > 0 && waterItems.every((item) => item.checked)}
+      />
       <PermSignature signature={sig} date={date} />
 
       <Text style={enroll.permSection}>Transportation:</Text>
       <Text style={enroll.permBody}>
         I give consent for my child to be transported and supervised by Angel Learning Center Staff for:
       </Text>
-      <PermissionCheckList items={transportItems} />
+      <InlineField
+        label="Selected"
+        value={transportItems.filter((item) => item.checked).map((item) => item.text).join(", ")}
+        flex={1}
+      />
       <Text style={[enroll.permBody, { marginTop: 8 }]}>
         Field trips will be announced at least 48 hours in advance. Parents will sign an individual permission slip for
         each trip indicating the address of the trip, length of the trip, and information on each passenger and driver.
@@ -1830,7 +1847,11 @@ function Page4({ d, raw = {} }) {
       <PermSignature signature={sig} date={date} />
 
       <Text style={enroll.permSection}>Photography Release</Text>
-      <PolicyBullets items={photoItems} />
+      <Text style={enroll.permBody}>
+        I understand Angel Learning Center takes photographs of center events and classroom activities throughout the year.
+        Permission covers classroom displays, family communications, the website or social media, and marketing materials, or none of those uses.
+      </Text>
+      <InlineField label="Photo permission" value={photoChoice} flex={1} />
       <PermSignature signature={sig} date={date} />
       <PdfFooter />
     </Page>
@@ -1892,20 +1913,9 @@ function PermissionCheckItem({ label, checked }) {
   return (
     <View style={enroll.permissionCheckRow}>
       <View style={[enroll.permissionCheckBox, yes ? enroll.permissionCheckBoxYes : null]}>
-        <Text style={[enroll.permissionCheckMark, yes ? enroll.permissionCheckYes : null]}>{yes ? "Y" : " "}</Text>
+        {yes ? <PdfCheckMark color="#FFFFFF" size={9} /> : <Text> </Text>}
       </View>
       <Text style={enroll.permissionCheckLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function PermissionCheckList({ items }) {
-  const rows = resolveBulletItems(items, false);
-  return (
-    <View>
-      {rows.map((row, idx) => (
-        <PermissionCheckItem key={idx} label={row.text} checked={row.checked} />
-      ))}
     </View>
   );
 }
@@ -2087,13 +2097,13 @@ function Page9({ d, raw = {} }) {
         the directions on the label of the container.
       </Text>
 
-      {PREP_PERMISSION_FIELDS.map(({ label, field, key }) => (
-        <PermissionCheckItem
-          key={field}
-          label={label}
-          checked={asBool(photo[field]) || prepSelected.includes(key)}
-        />
-      ))}
+      <PolicyBullets items={PREP_PERMISSION_FIELDS.map(({ label }) => label)} />
+      <PermissionCheckItem
+        label="I authorize the center to apply all of the external preparations listed above."
+        checked={
+          PREP_PERMISSION_FIELDS.every(({ field, key }) => asBool(photo[field]) || prepSelected.includes(key))
+        }
+      />
 
       <View style={[enroll.lineRow, { marginTop: 8 }]}>
         <InlineField label="Other (please specify)" value={photo.prepOther || d.externalPreparations?.other} flex={1} />
@@ -2124,12 +2134,7 @@ const agreementSignatureItems = [
 function AgreementSigColumn({ label, value }) {
   return (
     <View style={{ flex: 1, marginRight: 10, alignItems: "center" }}>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", width: "100%" }}>
-        {/* <Text style={[enroll.inlineLabel, { marginRight: 2 }]}>X</Text> */}
-        <View style={[enroll.inlineValue, { flex: 1 }]}>
-          <Text style={enroll.valueText}>{val(value) || " "}</Text>
-        </View>
-      </View>
+      <PdfSignatureOnLine value={value} lineStyle={{ width: "100%" }} />
       <Text style={{ fontFamily: FONT, fontSize: 9, marginTop: 3, textAlign: "center" }}>{label}</Text>
     </View>
   );
@@ -2318,15 +2323,15 @@ function Page12({ d }) {
   );
 }
 
-function Page13({ d }) {
-  const sig = d.signatures?.mother;
+function Page13({ d, raw = {} }) {
+  const wmg = raw.watchMeGrow || {};
+  const sig = wmg.wmgSignature || d.signatures?.mother;
 
   return (
     <Page size="LETTER" style={enroll.page}>
       <PdfHeader />
 
       <View style={enroll.wmgHero}>
-        <Image style={enroll.wmgAlcLogo} src={getLogoUrl()} />
         <Image style={enroll.wmgLogo} src={getWatchMeGrowUrl()} />
       </View>
 
@@ -2361,111 +2366,14 @@ function Page13({ d }) {
       />
 
       <Text style={[enroll.wmgStep, { color: COLORS.ink, marginTop: 12 }]}>Family Information</Text>
-      <WmgNumberedField number={1} label="Child's Name" value={d._derived?.childName} />
-      <WmgNumberedField number={2} label="Classroom" value={d.child?.gradeClass} />
+      <WmgNumberedField number={1} label="Child's Name" value={wmg.wmgChildName || d._derived?.childName} />
+      <WmgNumberedField number={2} label="Classroom" value="" />
       <WmgNumberedField number={3} label="Parent Signature" value={sig} />
 
-      <View style={{ marginTop: 14 }}>
-        <Text style={enroll.wmgRedNote}>
-          Individuals with accounts are allowed live feed only and cannot view previous footage.
-        </Text>
-        <Text style={enroll.wmgRedNote}>
-          Screenshots cannot be taken and will result in your account being disabled.
-        </Text>
-        <Text style={[enroll.wmgRedNote, { fontWeight: "bold" }]}>
-          Camera access excludes Pre-K, Afterschool, and Summer Camp
-        </Text>
-      </View>
-      <PdfFooter />
-    </Page>
-  );
-}
-
-const expulsionPolicyItems = [
-  "Challenging behaviors jeopardize the physical safety of the child and/or classmates as assessed by a qualified early childhood mental health consultant and all possible interventions and support recommended by a qualified early childhood mental health consultant aimed at providing a physically safe environment have been exhausted.",
-  "The child's parent(s) is unwilling to participate in mental health consultations that have been provided through the childcare program or independently obtain and participate in child mental health assistance available in the community.",
-  "Continued placement in this class or program clearly fails to meet the mental health and/or social-emotional needs of the child as agreed by both the staff and the family and a different program that is better able to meet these needs has been identified and can provide services to the child.",
-];
-
-const shakenBabyTrainingItems = [
-  "How the brain grows and what can hurt the brain in infancy and early childhood.",
-  "How to safely hold an infant to prevent shaken baby syndrome and abusive head trauma.",
-  "Ways to cope with a crying, fussing, or upset infant.",
-  "Ways for staff to cope with a crying baby.",
-  "Recognizing the signs and symptoms of abusive head trauma and shaken baby syndrome.",
-];
-
-function Page14({ d }) {
-  const { childName, parentName, date } = getPolicyAckFields(d);
-
-  return (
-    <Page size="LETTER" style={enroll.page}>
-      <Text style={enroll.policyAckTitle}>ANGEL LEARNING CENTER</Text>
-      <Text style={enroll.policyAckSubtitle}>POLICY ACKNOWLEDGMENT FORM for Parents and Staff</Text>
-
-      <PolicyAckField label="Child's Name" value={childName} />
-      <PolicyAckField label="Parent/Guardian Name" value={parentName} />
-      <PolicyAckField label="Staff Member Name (if applicable)" value="" />
-      <PolicyAckField label="Date" value={date} />
-
-      <Text style={enroll.permSection}>Discipline</Text>
-      <Text style={enroll.permBody}>I acknowledge that I have been informed of the following discipline policy:</Text>
-      <Text style={enroll.policyAckQuote}>
-        At no time will a child be subjected to physical punishment or shaming, frightening or humiliating
-        methods be used, or any type of verbal abuse, threats, derogatory remarks, or deprivation of a meal or any part
-        of a meal be used. No person, including, but not limited to, parents, guardians, or other family members may
-        use such methods or discipline while on the premises of the childcare program.&quot;
-      </Text>
-
-      <Text style={enroll.permSection}>Expulsion or Suspension</Text>
-      <Text style={enroll.permBody}>
-        I acknowledge that I have been informed of the following expulsion and suspension policy:
-      </Text>
-      <Text style={[enroll.policyAckQuote, { marginBottom: 4 }]}>
-        Expulsion or suspension of a child from care may happen when:
-      </Text>
-      {expulsionPolicyItems.map((item, idx) => (
-        <PolicyAckNumberedItem key={idx} number={idx + 1} text={item} />
-      ))} 
-
-      <Text style={enroll.permSection}>Prevention of Shaken Baby Syndrome and Abusive Head Trauma</Text>
-      <Text style={enroll.permBody}>
-        I acknowledge that I have been informed of the following policy regarding the prevention of shaken baby syndrome
-        and abusive head trauma:
-      </Text>
-      <Text style={[enroll.permBody, { marginBottom: 4, textAlign: "justify" }]}>
-        Program staff who have direct contact with children, including substitutes and volunteers, will have training in
-        preventing and identifying abusive head trauma and shaken baby syndrome. The training will teach the following
-        prevention and recognition topics:
-      </Text>
-      {shakenBabyTrainingItems.map((item, idx) => (
-        <PolicyAckNumberedItem key={idx} number={idx + 1} text={item} />
+      <Text style={[enroll.wmgStep, { marginTop: 14 }]}>Parent Acknowledgment</Text>
+      {WATCH_ME_GROW_ACK_ITEMS.map((item) => (
+        <PermissionCheckItem key={item.key} label={item.text} checked={!!wmg[item.key]} />
       ))}
-      <Text style={[enroll.permBody, { marginTop: 4, marginBottom: 10, textAlign: "justify" }]}>
-        If any children show signs or symptoms of abusive head trauma or shaken baby syndrome, program staff will notify
-        administration to take the next steps to report the issue as staff are mandated reporters.
-      </Text>
-
-      
-      <PdfFooter />
-    </Page>
-  );
-}
-
-function Page15({ d }) {
-  const { signature, date } = getPolicyAckFields(d);
-
-  return (
-    <Page size="LETTER" style={enroll.page}>
-      <Text style={[enroll.permSection, { marginTop: 14 }]}>Acknowledgment</Text>
-      <Text style={[enroll.permBody, { marginBottom: 8, textAlign: "justify" }]}>
-        I acknowledge that I have received, read, and understand the above policies regarding Discipline,
-        Expulsion/Suspension, and Prevention of Shaken Baby Syndrome and Abusive Head Trauma. I understand these policies
-        and agree to comply with them while participating in or utilizing services provided by Angel Learning Center.
-      </Text>
-      <PolicyAckSigLine label="Parent/Guardian Signature" signature={signature} date={date} />
-      <PolicyAckSigLine label="Staff Signature" signature="" date="" />
-      <PolicyAckSigLine label="Director Signature" signature="" date="" />
       <PdfFooter />
     </Page>
   );
@@ -2547,6 +2455,7 @@ export function PacketPdf({ data = {}, location = {}, which = "packet" }) {
   if (which === "financial") {
     return (
       <Document>
+        <FinancialAgreementPage data={data} location={location} />
         <Page12 d={d} raw={data} />
       </Document>
     );
@@ -2573,6 +2482,7 @@ export function PacketPdf({ data = {}, location = {}, which = "packet" }) {
     <Document>
       <Page1 d={d} raw={data} />
       <Page2 d={d} raw={data} />
+      <FinancialAgreementPage data={data} location={location} />
       <Page3 d={d} raw={data} />
       <Page4 d={d} raw={data} />
       <Page5 d={d} raw={data} />
@@ -2584,8 +2494,13 @@ export function PacketPdf({ data = {}, location = {}, which = "packet" }) {
       <Page11 d={d} raw={data} />
       <Page12 d={d} raw={data} />
       <Page13 d={d} raw={data} />
-      <Page14 d={d} raw={data} />
-      <Page15 d={d} raw={data} />
+      <ParentPolicyAckPage1 d={d} location={location} raw={data} />
+      <ParentPolicyAckPage2 d={d} location={location} raw={data} />
+      <ParentPolicyAckPage3 d={d} location={location} raw={data} />
+      <SafeSleepPage1 d={d} location={location} raw={data} />
+      <SafeSleepPage2 d={d} location={location} raw={data} />
+      <StrollerRidePage1 d={d} location={location} raw={data} />
+      <StrollerRidePage2 d={d} location={location} raw={data} />
       <Page16BlankSummary data={data} d={d} />
     </Document>
   );

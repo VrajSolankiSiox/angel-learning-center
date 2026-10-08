@@ -13,6 +13,10 @@ import EmergencyView from "./views/EmergencyView";
 import IesView from "./views/IesView";
 import HandbookView from "./views/HandbookView";
 import PhotoView from "./views/PhotoView";
+import PolicyAckView from "./views/PolicyAckView";
+import SafeSleepView from "./views/SafeSleepView";
+import StrollerRideView from "./views/StrollerRideView";
+import WatchMeGrowView from "./views/WatchMeGrowView";
 import UploadsView from "./views/UploadsView";
 import StaffView from "./views/StaffView";
 import DoneView from "./views/DoneView";
@@ -50,6 +54,14 @@ export function App() {
         return <HandbookView />;
       case "photo":
         return <PhotoView />;
+      case "policyAck":
+        return <PolicyAckView />;
+      case "safeSleep":
+        return <SafeSleepView />;
+      case "strollerRide":
+        return <StrollerRideView />;
+      case "watchMeGrow":
+        return <WatchMeGrowView />;
       case "uploads":
         return <UploadsView />;
       case "staff":

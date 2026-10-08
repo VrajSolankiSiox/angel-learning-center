@@ -18,7 +18,9 @@ export function PacketView() {
         </p>
         <ProgressBar />
       </div>
-      <FormList id="packetList" />
+      <div className="form-area-outline">
+        <FormList id="packetList" />
+      </div>
     </section>
   );
 }

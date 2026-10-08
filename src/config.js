@@ -112,8 +112,8 @@ export const ALC_CONFIG = {
     { id: "before_care", label: "Before care", transport: true },
     { id: "after_care", label: "After care", transport: true },
     { id: "before_after", label: "Before & after care", transport: true },
-    { id: "prek", label: "GA Pre-K", transport: true },
-    { id: "summer_camp", label: "Summer Camp", transport: true },
+    { id: "prek", label: "GA Pre-K", transport: false },
+    { id: "summer_camp", label: "Summer Camp", transport: false },
     { id: "holiday_weeks", label: "Holiday Weeks", transport: false },
   ],
 
@@ -142,12 +142,13 @@ export const ALC_CONFIG = {
         { id: "sallas-mahone", name: "Sallas Mahone Elementary School", address: "3686 Lake Laurie Drive, Valdosta, GA 31605" },
         { id: "wg-nunn", name: "W.G. Nunn Elementary School", address: "1610 Lakeland Avenue, Valdosta, GA 31602" },
         { id: "dewar", name: "Dewar Elementary School", address: "3539 Mt. Zion Church Road, Valdosta, GA 31605" },
+        { id: "sl-mason", name: "S.L. Mason Elementary School", address: "821 W Gordon St, Valdosta, GA 31601" },
       ],
     },
   },
 
   forms: {
-    core: ["enrollment", "financial", "transport", "emergency", "ies", "handbook", "photo", "uploads"],
+    core: ["enrollment", "financial", "transport", "emergency", "ies", "handbook", "photo", "watchMeGrow", "policyAck", "safeSleep", "strollerRide", "uploads"],
   },
 
   uploads: [

@@ -6,13 +6,14 @@ export function FormList({ asLink = true, compact = false, id = "formList" }) {
 
   return (
     <ul className={`form-list ${compact ? "compact" : ""}`} id={id}>
-      {activeForms.map((form) => {
+      {activeForms.map((form, index) => {
         const isDone = !!state.completed[form.id];
         const statusText = isDone ? "✓" : t("statusTodo");
+        const stepNum = String(index + 1).padStart(2, "0");
 
         const content = (
           <>
-            <span className="form-num">{form.num}</span>
+            <span className="form-num">{stepNum}</span>
             <span className="form-meta">
               <strong>{formTitle(form)}</strong>
               <span>{formBlurb(form)}</span>

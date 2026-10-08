@@ -6,12 +6,35 @@ import { Font, StyleSheet, Text, View, Image } from "@react-pdf/renderer";
  * filled values sit on underline rules without overflowing adjacent fields.
  */
 export const FONT = "Times-Roman";
-export const SIGNATURE_FONT = "Pacifico";
+export const SIGNATURE_FONT = "DancingScript";
 
-Font.register({
-  family: SIGNATURE_FONT,
-  src: "/fonts/Pacifico.ttf",
-});
+function publicAssetUrl(relativePath) {
+  const path = relativePath.startsWith("/") ? relativePath : `/${relativePath}`;
+  if (typeof window !== "undefined" && window.location?.origin && window.location.protocol !== "file:") {
+    return `${window.location.origin}${path}`;
+  }
+  return `public${path}`;
+}
+
+let signatureFontRegistered = false;
+
+/** Register cursive font before @react-pdf/renderer renders (browser URL required). */
+export function ensurePdfFonts() {
+  if (signatureFontRegistered) return;
+  try {
+    Font.register({
+      family: SIGNATURE_FONT,
+      src: publicAssetUrl("/fonts/DancingScript.ttf"),
+    });
+    signatureFontRegistered = true;
+  } catch {
+    signatureFontRegistered = true;
+  }
+}
+
+if (typeof window !== "undefined") {
+  ensurePdfFonts();
+}
 
 export const COLORS = {
   ink: "#000000",
@@ -176,11 +199,14 @@ export function getLogoUrl() {
   return "public/assets/angelLearningLogo.png";
 }
 
+/** Horizontal banner; source file lives in /assets and is copied to public/assets for Vite. */
+export const WATCH_ME_GROW_LOGO = "WatchMeGrow2.png";
+
 export function getWatchMeGrowUrl() {
   if (typeof window !== "undefined" && window.location?.origin && window.location.protocol !== "file:") {
-    return `${window.location.origin}/assets/WatchMeGrow.png`;
+    return `${window.location.origin}/assets/${WATCH_ME_GROW_LOGO}`;
   }
-  return "public/assets/WatchMeGrow.png";
+  return `public/assets/${WATCH_ME_GROW_LOGO}`;
 }
 
 export function getProCareLogoUrl() {
@@ -222,16 +248,73 @@ export function formatPdfValue(v) {
   return s.toUpperCase();
 }
 
+export function isSignatureFieldLabel(label = "") {
+  return /signature|e-signature/i.test(String(label));
+}
+
+/** Signatures use natural/title case — never the form’s ALL CAPS styling. */
+export function formatSignatureValue(v) {
+  if (v == null || v === "") return "";
+  const trimmed = String(v).trim();
+  if (!trimmed) return "";
+  if (trimmed !== trimmed.toUpperCase()) return trimmed;
+  if (!/[A-Z]/.test(trimmed)) return trimmed;
+  return trimmed
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : ""))
+    .join(" ");
+}
+
+export const signaturePdfStyles = StyleSheet.create({
+  line: {
+    borderBottomWidth: 0.65,
+    borderBottomColor: COLORS.line,
+    minHeight: 20,
+    position: "relative",
+    flexGrow: 1,
+    minWidth: 24,
+  },
+  text: {
+    fontFamily: SIGNATURE_FONT,
+    fontSize: 16,
+    color: "#1a4da6",
+    position: "absolute",
+    left: 3,
+    bottom: 3,
+    lineHeight: 1,
+  },
+});
+
+export function PdfSignatureOnLine({ value, style, lineStyle }) {
+  const text = formatSignatureValue(value) || " ";
+  return (
+    <View style={[signaturePdfStyles.line, lineStyle, style]}>
+      <Text style={signaturePdfStyles.text}>{text}</Text>
+    </View>
+  );
+}
+
 export function FormField({ label, value, flex = 1, minWidth = 28, style = {}, grow = true }) {
-  const displayVal = value == null || value === "" ? " " : formatPdfValue(value);
+  const isSignature = isSignatureFieldLabel(label);
+  const displayVal = isSignature
+    ? formatSignatureValue(value) || " "
+    : value == null || value === ""
+      ? " "
+      : formatPdfValue(value);
+
   return (
     <View style={[pdfStyles.fieldContainer, { flex, minWidth }, style]}>
       <Text style={pdfStyles.fieldLabel}>{label}:</Text>
-      <View style={[pdfStyles.underlineValue, grow ? { flex: 1 } : null, { minWidth }]}>
-        <Text style={pdfStyles.underlineText} wrap>
-          {displayVal}
-        </Text>
-      </View>
+      {isSignature ? (
+        <PdfSignatureOnLine value={value} style={grow ? { flex: 1 } : null} lineStyle={{ minWidth }} />
+      ) : (
+        <View style={[pdfStyles.underlineValue, grow ? { flex: 1 } : null, { minWidth }]}>
+          <Text style={pdfStyles.underlineText} wrap>
+            {displayVal}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

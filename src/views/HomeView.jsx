@@ -54,8 +54,9 @@ export function HomeView() {
       <section className="section packet-overview">
         <h2>What to complete</h2>
         <p className="section-lead">
-          Enrollment · tuition · transport (when applicable) · emergency · meal benefit · handbook · photo/video
-          permission · required document uploads.
+          Enrollment · tuition · transport (before/after care only) · emergency (when applicable) · meal benefit · handbook ·
+          photo/video permission · Watch Me Grow registration · parent policy acknowledgment · safe sleep · stroller ride
+          & nature walk · required document uploads.
         </p>
         <FormList id="formList" />
       </section>

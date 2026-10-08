@@ -140,6 +140,7 @@ window.ALC_CONFIG = {
         { id: "sallas-mahone", name: "Sallas Mahone Elementary School", address: "3686 Lake Laurie Drive, Valdosta, GA 31605" },
         { id: "wg-nunn", name: "W.G. Nunn Elementary School", address: "1610 Lakeland Avenue, Valdosta, GA 31602" },
         { id: "dewar", name: "Dewar Elementary School", address: "3539 Mt. Zion Church Road, Valdosta, GA 31605" },
+        { id: "sl-mason", name: "S.L. Mason Elementary School", address: "821 W Gordon St, Valdosta, GA 31601" },
       ],
     },
     // #6 incomplete — times/miles filled by parent or staff until center provides defaults

@@ -2,6 +2,7 @@ import React from "react";
 import { pdf } from "@react-pdf/renderer";
 import PacketPdf from "./PacketPdf";
 import WaitlistAgreementPdf from "./WaitlistPdf";
+import { ensurePdfFonts } from "./PdfShared";
 import { appendUploadsToPacketPdf, getUploadsForMerge, mergePdfBlobs } from "./mergePacketPdf";
 
 const BLANK_IES_FILENAME = "IES2026-2027_ENGLISH.pdf";
@@ -15,6 +16,7 @@ function safeName(s) {
 
 export async function saveDocumentAsPdf(documentComponent, filename, { appendUploadsData } = {}) {
   try {
+    ensurePdfFonts();
     let blob = await pdf(documentComponent).toBlob();
     if (appendUploadsData) {
       blob = await appendUploadsToPacketPdf(blob, appendUploadsData);
@@ -65,6 +67,22 @@ export async function downloadBlankIesPdf() {
  * which = "enrollment" → enrollment + financial only
  * which = "financial"  → financial page only
  */
+export function getPacketChildName(state) {
+  const en = state?.data?.enrollment || {};
+  return (
+    [en.childFirst, en.childMI, en.childLast].filter(Boolean).join(" ").trim() ||
+    en.childPreferred ||
+    "Child"
+  );
+}
+
+export function getSubmissionStorageKey(state, type = "packet") {
+  const en = state?.data?.enrollment || {};
+  const child = getPacketChildName(state).replace(/\s+/g, "_").toLowerCase();
+  const loc = state?.locationId || en.enLocation || "center";
+  return `alc-email-sent-${type}-${loc}-${child}`;
+}
+
 function readLatestPacketData(state) {
   const fromState = state?.data || {};
   let fromStore = {};
@@ -80,8 +98,16 @@ function readLatestPacketData(state) {
     ...fromStore,
     ...fromState,
     enrollment: { ...(fromStore.enrollment || {}), ...(fromState.enrollment || {}) },
-    photo: { ...(fromStore.photo || {}), ...(fromState.photo || {}) },
+    financial: { ...(fromStore.financial || {}), ...(fromState.financial || {}) },
     transport: { ...(fromStore.transport || {}), ...(fromState.transport || {}) },
+    emergency: { ...(fromStore.emergency || {}), ...(fromState.emergency || {}) },
+    ies: { ...(fromStore.ies || {}), ...(fromState.ies || {}) },
+    handbook: { ...(fromStore.handbook || {}), ...(fromState.handbook || {}) },
+    photo: { ...(fromStore.photo || {}), ...(fromState.photo || {}) },
+    policyAck: { ...(fromStore.policyAck || {}), ...(fromState.policyAck || {}) },
+    safeSleep: { ...(fromStore.safeSleep || {}), ...(fromState.safeSleep || {}) },
+    strollerRide: { ...(fromStore.strollerRide || {}), ...(fromState.strollerRide || {}) },
+    watchMeGrow: { ...(fromStore.watchMeGrow || {}), ...(fromState.watchMeGrow || {}) },
     uploads: {
       ...(fromStore.uploads || {}),
       ...(fromState.uploads || {}),
@@ -93,43 +119,50 @@ function readLatestPacketData(state) {
   };
 }
 
-export async function downloadPdfBundle({ state, location, which = "packet" }) {
-  const data = readLatestPacketData(state);
-  const loc = location || {};
+function buildPacketFilename(data, loc, which) {
   const en = data.enrollment || {};
   const dateStr = new Date().toISOString().slice(0, 10);
   const base = `ALC_${safeName(en.childLast || loc.id)}_${safeName(en.childFirst)}_${dateStr}`;
-
   const filenameMap = {
     packet: `${base}_Enrollment_Packet.pdf`,
     enrollment: `${base}_Enrollment_Form.pdf`,
     financial: `${base}_Financial_Agreement.pdf`,
+    waitlist: `${base}_Waitlist_Packet.pdf`,
   };
-
-  const filename = filenameMap[which] || filenameMap.packet;
-
-  await saveDocumentAsPdf(
-    <PacketPdf data={data} location={loc} which={which} />,
-    filename,
-    which === "packet" ? { appendUploadsData: data } : {}
-  );
-
-  return { queued: 1 };
+  return filenameMap[which] || filenameMap.packet;
 }
 
-export async function downloadWaitlistPdf({ state, location }) {
+export async function generatePdfBundleBlob({
+  state,
+  location,
+  which = "packet",
+  appendUploads = true,
+}) {
   const data = readLatestPacketData(state);
   const loc = location || {};
-  const en = data.enrollment || {};
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const base = `ALC_${safeName(en.childLast || loc.id)}_${safeName(en.childFirst)}_${dateStr}`;
-  const filename = `${base}_Waitlist_Packet.pdf`;
+  const filename = buildPacketFilename(data, loc, which);
+  ensurePdfFonts();
+  let blob = await pdf(<PacketPdf data={data} location={loc} which={which} />).toBlob();
+  if (which === "packet" && appendUploads) {
+    blob = await appendUploadsToPacketPdf(blob, data);
+  }
+  return { blob, filename, data };
+}
 
+export async function generateWaitlistPdfBlob({ state, location }) {
+  const data = readLatestPacketData(state);
+  const loc = location || {};
+  const filename = buildPacketFilename(data, loc, "waitlist");
+  ensurePdfFonts();
   const enrollmentBlob = await pdf(<PacketPdf data={data} location={loc} which="waitlist" />).toBlob();
   const agreementBlob = await pdf(<WaitlistAgreementPdf data={data} location={loc} />).toBlob();
-  const mergedBlob = await mergePdfBlobs([agreementBlob, enrollmentBlob]);
+  const blob = await mergePdfBlobs([agreementBlob, enrollmentBlob]);
+  return { blob, filename, data };
+}
 
-  const url = URL.createObjectURL(mergedBlob);
+export async function downloadPdfBundle({ state, location, which = "packet" }) {
+  const { blob, filename } = await generatePdfBundleBlob({ state, location, which });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
@@ -137,6 +170,18 @@ export async function downloadWaitlistPdf({ state, location }) {
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return { queued: 1 };
+}
 
+export async function downloadWaitlistPdf({ state, location }) {
+  const { blob, filename } = await generateWaitlistPdfBlob({ state, location });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
   return { queued: 1 };
 }

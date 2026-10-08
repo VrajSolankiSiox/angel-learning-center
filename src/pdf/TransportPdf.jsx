@@ -8,6 +8,8 @@ import {
   FormField,
   CheckboxField,
 } from "./PdfShared";
+import { transportDirectionLabel, transportSchoolLabel, transportWhenLabel } from "../utils/formValues";
+import ALC_CONFIG from "../config";
 
 export function TransportPdf({ data = {}, location = {} }) {
   const tr = data.transport || {};
@@ -28,7 +30,11 @@ export function TransportPdf({ data = {}, location = {} }) {
         </View>
 
         <View style={pdfStyles.formRow}>
-          <FormField label="Selected School" value={tr.trSchoolChoice} flex={3} />
+          <FormField
+            label="Selected School"
+            value={transportSchoolLabel(tr.trLocation || location?.id, tr.trSchoolChoice, ALC_CONFIG.transport?.schools)}
+            flex={3}
+          />
           <FormField label="Approx. Miles" value={tr.trMiles} flex={1} />
         </View>
 
@@ -37,19 +43,21 @@ export function TransportPdf({ data = {}, location = {} }) {
         </View>
 
         <View style={pdfStyles.formRow}>
-          <FormField label="Direction" value={tr.trDirection} flex={2} />
-          <FormField label="When" value={tr.trWhen} flex={2} />
+          <FormField label="Direction" value={transportDirectionLabel(tr.trDirection)} flex={2} />
+          <FormField label="When" value={transportWhenLabel(tr.trWhen)} flex={2} />
           <FormField label="Pickup Time" value={tr.trPickupTime} flex={2} />
           <FormField label="Arrive Time" value={tr.trArriveTime} flex={2} />
         </View>
 
         <PdfSectionTitle title="Days of Transportation" />
         <View style={pdfStyles.formRow}>
-          <CheckboxField label="Monday" checked={!!tr.trMon} />
-          <CheckboxField label="Tuesday" checked={!!tr.trTue} />
-          <CheckboxField label="Wednesday" checked={!!tr.trWed} />
-          <CheckboxField label="Thursday" checked={!!tr.trThu} />
-          <CheckboxField label="Friday" checked={!!tr.trFri} />
+          <FormField
+            label="Selected days"
+            value={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+              .filter((_, index) => tr[["trMon", "trTue", "trWed", "trThu", "trFri"][index]])
+              .join(", ")}
+            flex={1}
+          />
         </View>
 
         <PdfSectionTitle title="Staff Authorization & Signature" />

@@ -3,6 +3,76 @@ import { useEnrollment } from "../context/EnrollmentContext";
 import { useFormDraft } from "../hooks/useFormDraft";
 import { completeFormAndGo } from "../utils/formNext";
 
+const PHOTO_PERMISSION_ITEMS = [
+  "Classroom / center displays",
+  "Communications to enrolled families",
+  "Website / social media",
+  "Marketing / promotional materials",
+];
+
+const WATER_PERMISSION_ITEMS = [
+  "Sprinkler",
+  "Play Splashing",
+  "Swimming Pools",
+  "Water Table Play",
+];
+
+const PREP_PERMISSION_ITEMS = [
+  { field: "prepBabyWipes", label: "Baby wipes" },
+  { field: "prepBandAids", label: "Band-Aids" },
+  { field: "prepNeosporin", label: "Neosporin or similar ointment" },
+  { field: "prepBactine", label: "Bactine or similar first aid spray" },
+  { field: "prepSunscreen", label: "Sunscreen" },
+  { field: "prepInsectRepellent", label: "Insect repellent" },
+  { field: "prepNonRxOintment", label: "Non-prescription ointment (A&D, Desitin, Vaseline, etc.)" },
+  { field: "prepBabyPowder", label: "Baby Powder" },
+];
+
+function allPhotoGranted(data = {}) {
+  return !!(
+    data.photoClassroom &&
+    data.photoFamily &&
+    data.photoWeb &&
+    data.photoMarketing &&
+    !data.photoNone
+  );
+}
+
+function allWaterGranted(data = {}) {
+  return !!(
+    data.permWaterSprinkler &&
+    data.permWaterSplashing &&
+    data.permWaterPools &&
+    data.permWaterTable
+  );
+}
+
+function allPrepGranted(data = {}) {
+  return PREP_PERMISSION_ITEMS.every((item) => !!data[item.field]);
+}
+
+function withAllOrNonePermissions(data) {
+  const photoGrant = allPhotoGranted(data);
+  const waterGrant = allWaterGranted(data);
+  const prepGrant = allPrepGranted(data);
+  const next = {
+    ...data,
+    photoClassroom: photoGrant,
+    photoFamily: photoGrant,
+    photoWeb: photoGrant,
+    photoMarketing: photoGrant,
+    photoNone: !photoGrant,
+    permWaterSprinkler: waterGrant,
+    permWaterSplashing: waterGrant,
+    permWaterPools: waterGrant,
+    permWaterTable: waterGrant,
+  };
+  PREP_PERMISSION_ITEMS.forEach((item) => {
+    next[item.field] = prepGrant;
+  });
+  return next;
+}
+
 export function PhotoView() {
   const { state, saveForm, applyCarryForward, t, navigateTo } = useEnrollment();
 
@@ -69,6 +139,37 @@ export function PhotoView() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === "photoGrantAll") {
+      setFormData((prev) => withAllOrNonePermissions({
+        ...prev,
+        photoClassroom: checked,
+        photoFamily: checked,
+        photoWeb: checked,
+        photoMarketing: checked,
+        photoNone: !checked,
+      }));
+      return;
+    }
+    if (name === "waterGrantAll") {
+      setFormData((prev) => withAllOrNonePermissions({
+        ...prev,
+        permWaterSprinkler: checked,
+        permWaterSplashing: checked,
+        permWaterPools: checked,
+        permWaterTable: checked,
+      }));
+      return;
+    }
+    if (name === "prepGrantAll") {
+      setFormData((prev) => {
+        const next = { ...prev };
+        PREP_PERMISSION_ITEMS.forEach((item) => {
+          next[item.field] = checked;
+        });
+        return withAllOrNonePermissions(next);
+      });
+      return;
+    }
     if (type === "checkbox") {
       setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
@@ -81,11 +182,15 @@ export function PhotoView() {
       event: e,
       saveForm,
       formId: "photo",
-      getPayload: () => formData,
+      getPayload: () => withAllOrNonePermissions(formData),
       navigateTo,
-      target: "uploads",
+      target: "watchMeGrow",
     });
   };
+
+  const photoGrantAll = allPhotoGranted(formData);
+  const waterGrantAll = allWaterGranted(formData);
+  const prepGrantAll = allPrepGranted(formData);
 
   const showPrefillNotice = !!(
     state.data?.enrollment?.childFirst ||
@@ -125,108 +230,57 @@ export function PhotoView() {
           <legend>Permission</legend>
           <div className="scroll-terms">
             <p>
-              I understand that Angel Learning Center may take photographs and/or video of children during normal program activities, special events, and classroom learning. These images may be used for classroom displays, center communications to enrolled families, the center website or social media, and marketing materials, unless I limit permission below.
+              I understand that Angel Learning Center may take photographs and/or video of children during normal program activities, special events, and classroom learning. Permission is for every use below, or for none of them.
             </p>
           </div>
-          <p className="subhead">I grant permission for (check all that apply)</p>
+          <p className="subhead">I grant permission for</p>
+          <ul className="perm-choice-list">
+            {PHOTO_PERMISSION_ITEMS.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
           <label className="check">
             <input
               type="checkbox"
-              name="photoClassroom"
-              checked={formData.photoClassroom}
+              name="photoGrantAll"
+              checked={photoGrantAll}
               onChange={handleChange}
             />
-            Classroom / center displays
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              name="photoFamily"
-              checked={formData.photoFamily}
-              onChange={handleChange}
-            />
-            Communications to enrolled families
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              name="photoWeb"
-              checked={formData.photoWeb}
-              onChange={handleChange}
-            />
-            Website / social media
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              name="photoMarketing"
-              checked={formData.photoMarketing}
-              onChange={handleChange}
-            />
-            Marketing / promotional materials
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              name="photoNone"
-              checked={formData.photoNone}
-              onChange={handleChange}
-            />
-            I do <strong>not</strong> grant photo/video permission
+            I grant permission for all of the uses above. Leave unchecked to grant none.
           </label>
 
-          <p className="subhead">Water activities consent <span className="pill-muted">Optional</span></p>
-          <p className="hint">Matches the Permissions page in your enrollment packet PDF.</p>
+          <p className="subhead">Water activities consent</p>
+          <p className="hint">Permission is for every water activity below, or for none of them.</p>
+          <ul className="perm-choice-list">
+            {WATER_PERMISSION_ITEMS.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
           <label className="check">
-            <input type="checkbox" name="permWaterSprinkler" checked={formData.permWaterSprinkler} onChange={handleChange} />
-            Sprinkler
-          </label>
-          <label className="check">
-            <input type="checkbox" name="permWaterSplashing" checked={formData.permWaterSplashing} onChange={handleChange} />
-            Play Splashing
-          </label>
-          <label className="check">
-            <input type="checkbox" name="permWaterPools" checked={formData.permWaterPools} onChange={handleChange} />
-            Swimming Pools
-          </label>
-          <label className="check">
-            <input type="checkbox" name="permWaterTable" checked={formData.permWaterTable} onChange={handleChange} />
-            Water Table Play
+            <input
+              type="checkbox"
+              name="waterGrantAll"
+              checked={waterGrantAll}
+              onChange={handleChange}
+            />
+            I grant permission for all water activities above. Leave unchecked to grant none.
           </label>
 
-          <p className="subhead">Topical preparations <span className="pill-muted">Optional</span></p>
-          <p className="hint">Select any external preparations you authorize the center to apply.</p>
+          <p className="subhead">Topical preparations</p>
+          <p className="hint">Acknowledgment covers every external preparation below, or none of them.</p>
+          <ul className="perm-choice-list">
+            {PREP_PERMISSION_ITEMS.map((item) => (
+              <li key={item.field}>{item.label}</li>
+            ))}
+          </ul>
           <label className="check">
-            <input type="checkbox" name="prepBabyWipes" checked={formData.prepBabyWipes} onChange={handleChange} />
-            Baby wipes
-          </label>
-          <label className="check">
-            <input type="checkbox" name="prepBandAids" checked={formData.prepBandAids} onChange={handleChange} />
-            Band-Aids
-          </label>
-          <label className="check">
-            <input type="checkbox" name="prepNeosporin" checked={formData.prepNeosporin} onChange={handleChange} />
-            Neosporin or similar ointment
-          </label>
-          <label className="check">
-            <input type="checkbox" name="prepBactine" checked={formData.prepBactine} onChange={handleChange} />
-            Bactine or similar first aid spray
-          </label>
-          <label className="check">
-            <input type="checkbox" name="prepSunscreen" checked={formData.prepSunscreen} onChange={handleChange} />
-            Sunscreen
-          </label>
-          <label className="check">
-            <input type="checkbox" name="prepInsectRepellent" checked={formData.prepInsectRepellent} onChange={handleChange} />
-            Insect repellent
-          </label>
-          <label className="check">
-            <input type="checkbox" name="prepNonRxOintment" checked={formData.prepNonRxOintment} onChange={handleChange} />
-            Non-prescription ointment (A&amp;D, Desitin, Vaseline, etc.)
-          </label>
-          <label className="check">
-            <input type="checkbox" name="prepBabyPowder" checked={formData.prepBabyPowder} onChange={handleChange} />
-            Baby Powder
+            <input
+              type="checkbox"
+              name="prepGrantAll"
+              checked={prepGrantAll}
+              onChange={handleChange}
+            />
+            I authorize the center to apply all of the external preparations above. Leave unchecked to authorize none.
           </label>
           <label>
             Other topical preparation (optional)

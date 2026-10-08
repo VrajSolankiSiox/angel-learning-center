@@ -1,5 +1,9 @@
 import ALC_CONFIG from "../config";
-import { needsEmergencyMedicalForm, normalizePrograms } from "../utils/programSelection";
+import {
+  needsEmergencyMedicalForm,
+  needsTransportForm,
+  normalizePrograms,
+} from "../utils/programSelection";
 
 function isBlank(value) {
   if (value === undefined || value === null) return true;
@@ -9,8 +13,7 @@ function isBlank(value) {
 }
 
 function needsTransport(programs) {
-  const selected = new Set(normalizePrograms(programs));
-  return (ALC_CONFIG.programs || []).some((p) => p.transport && selected.has(p.id));
+  return needsTransportForm(programs);
 }
 
 const TEXT_FIELDS = [
@@ -18,7 +21,6 @@ const TEXT_FIELDS = [
   { form: "enrollment", section: "Enrollment", key: "childMI", label: "Child Middle Initial" },
   { form: "enrollment", section: "Enrollment", key: "childLast", label: "Child Last Name" },
   { form: "enrollment", section: "Enrollment", key: "childPreferred", label: "Child Preferred Name" },
-  { form: "enrollment", section: "Enrollment", key: "childGrade", label: "Grade / Class" },
   { form: "enrollment", section: "Enrollment", key: "startDate", label: "Enrollment Start Date" },
   { form: "enrollment", section: "Enrollment", key: "childDob", label: "Child Date of Birth" },
   { form: "enrollment", section: "Enrollment", key: "childGender", label: "Child Gender" },
@@ -33,6 +35,7 @@ const TEXT_FIELDS = [
   { form: "enrollment", section: "Enrollment", key: "momEmail", label: "Mother / Guardian Email" },
   { form: "enrollment", section: "Enrollment", key: "momEmployer", label: "Mother / Guardian Employer" },
   { form: "enrollment", section: "Enrollment", key: "momOccupation", label: "Mother / Guardian Occupation" },
+  { form: "enrollment", section: "Enrollment", key: "momWorkAddress", label: "Mother / Guardian Work Address" },
   { form: "enrollment", section: "Enrollment", key: "dadFirst", label: "Father / Guardian First Name" },
   { form: "enrollment", section: "Enrollment", key: "dadMI", label: "Father / Guardian Middle Initial" },
   { form: "enrollment", section: "Enrollment", key: "dadLast", label: "Father / Guardian Last Name" },
@@ -40,15 +43,18 @@ const TEXT_FIELDS = [
   { form: "enrollment", section: "Enrollment", key: "dadEmail", label: "Father / Guardian Email" },
   { form: "enrollment", section: "Enrollment", key: "dadEmployer", label: "Father / Guardian Employer" },
   { form: "enrollment", section: "Enrollment", key: "dadOccupation", label: "Father / Guardian Occupation" },
+  { form: "enrollment", section: "Enrollment", key: "dadWorkAddress", label: "Father / Guardian Work Address" },
   { form: "enrollment", section: "Enrollment", key: "ec1Name", label: "Emergency Contact 1 Name" },
   { form: "enrollment", section: "Enrollment", key: "ec1Home", label: "Emergency Contact 1 Home Phone" },
   { form: "enrollment", section: "Enrollment", key: "ec1Work", label: "Emergency Contact 1 Work Phone" },
   { form: "enrollment", section: "Enrollment", key: "ec1Cell", label: "Emergency Contact 1 Cell Phone" },
+  { form: "enrollment", section: "Enrollment", key: "ec1Address", label: "Emergency Contact 1 Address" },
   { form: "enrollment", section: "Enrollment", key: "ec1Rel", label: "Emergency Contact 1 Relationship" },
   { form: "enrollment", section: "Enrollment", key: "ec2Name", label: "Emergency Contact 2 Name" },
   { form: "enrollment", section: "Enrollment", key: "ec2Home", label: "Emergency Contact 2 Home Phone" },
   { form: "enrollment", section: "Enrollment", key: "ec2Work", label: "Emergency Contact 2 Work Phone" },
   { form: "enrollment", section: "Enrollment", key: "ec2Cell", label: "Emergency Contact 2 Cell Phone" },
+  { form: "enrollment", section: "Enrollment", key: "ec2Address", label: "Emergency Contact 2 Address" },
   { form: "enrollment", section: "Enrollment", key: "ec2Rel", label: "Emergency Contact 2 Relationship" },
   { form: "enrollment", section: "Enrollment", key: "careFrom", label: "Care Hours — From" },
   { form: "enrollment", section: "Enrollment", key: "careTo", label: "Care Hours — To" },
@@ -65,24 +71,24 @@ const TEXT_FIELDS = [
   { form: "financial", section: "Financial Agreement", key: "rpPhone", label: "Responsible Party Phone" },
   { form: "financial", section: "Financial Agreement", key: "rpEmail", label: "Responsible Party Email" },
   { form: "financial", section: "Financial Agreement", key: "rpEmployer", label: "Responsible Party Employer" },
-  { form: "financial", section: "Financial Agreement", key: "rp2Name", label: "Second Party Name (optional)" },
-  { form: "financial", section: "Financial Agreement", key: "rp2Dob", label: "Second Party Date of Birth" },
-  { form: "financial", section: "Financial Agreement", key: "rp2Dl", label: "Second Party Driver's License" },
-  { form: "financial", section: "Financial Agreement", key: "rp2State", label: "Second Party License State" },
-  { form: "financial", section: "Financial Agreement", key: "rp2Address", label: "Second Party Address" },
-  { form: "financial", section: "Financial Agreement", key: "rp2CityStateZip", label: "Second Party City / State / ZIP" },
-  { form: "financial", section: "Financial Agreement", key: "rp2Employer", label: "Second Party Employer" },
-  { form: "financial", section: "Financial Agreement", key: "rp2Phone", label: "Second Party Phone" },
-  { form: "financial", section: "Financial Agreement", key: "rp2Email", label: "Second Party Email" },
+  { form: "financial", section: "Financial Agreement", key: "rp2Name", label: "Second Party Name", optionalGroup: "secondParty" },
+  { form: "financial", section: "Financial Agreement", key: "rp2Dob", label: "Second Party Date of Birth", optionalGroup: "secondParty" },
+  { form: "financial", section: "Financial Agreement", key: "rp2Dl", label: "Second Party Driver's License", optionalGroup: "secondParty" },
+  { form: "financial", section: "Financial Agreement", key: "rp2State", label: "Second Party License State", optionalGroup: "secondParty" },
+  { form: "financial", section: "Financial Agreement", key: "rp2Address", label: "Second Party Address", optionalGroup: "secondParty" },
+  { form: "financial", section: "Financial Agreement", key: "rp2CityStateZip", label: "Second Party City / State / ZIP", optionalGroup: "secondParty" },
+  { form: "financial", section: "Financial Agreement", key: "rp2Employer", label: "Second Party Employer", optionalGroup: "secondParty" },
+  { form: "financial", section: "Financial Agreement", key: "rp2Phone", label: "Second Party Phone", optionalGroup: "secondParty" },
+  { form: "financial", section: "Financial Agreement", key: "rp2Email", label: "Second Party Email", optionalGroup: "secondParty" },
   { form: "financial", section: "Financial Agreement", key: "finChildName", label: "Enrolled Child Name" },
   { form: "financial", section: "Financial Agreement", key: "finEnrollDate", label: "Enrollment Date" },
   { form: "financial", section: "Financial Agreement", key: "finPrintName", label: "Financial Agreement Printed Name" },
   { form: "financial", section: "Financial Agreement", key: "finSignDate", label: "Financial Agreement Date" },
   { form: "financial", section: "Financial Agreement", key: "finSignature", label: "Financial Agreement Signature" },
-  { form: "financial", section: "Financial Agreement", key: "finCardholderName", label: "Cardholder Name" },
-  { form: "financial", section: "Financial Agreement", key: "finCardNumber", label: "Card Number" },
-  { form: "financial", section: "Financial Agreement", key: "finCardExp", label: "Card Expiration" },
-  { form: "financial", section: "Financial Agreement", key: "finCardCvv", label: "Card CVV" },
+  { form: "financial", section: "Financial Agreement", key: "finCardholderName", label: "Cardholder Name", optionalGroup: "card" },
+  { form: "financial", section: "Financial Agreement", key: "finCardNumber", label: "Card Number", optionalGroup: "card" },
+  { form: "financial", section: "Financial Agreement", key: "finCardExp", label: "Card Expiration", optionalGroup: "card" },
+  { form: "financial", section: "Financial Agreement", key: "finCardCvv", label: "Card CVV", optionalGroup: "card" },
 
   { form: "transport", section: "Transportation", key: "trChild", label: "Transport Child Name", whenTransport: true },
   { form: "transport", section: "Transportation", key: "trSchoolChoice", label: "School Selection", whenTransport: true },
@@ -124,88 +130,54 @@ const TEXT_FIELDS = [
   { form: "photo", section: "Photo / Permissions", key: "photoPrint", label: "Photo Permission Printed Name" },
   { form: "photo", section: "Photo / Permissions", key: "photoDate", label: "Photo Permission Date" },
   { form: "photo", section: "Photo / Permissions", key: "photoSignature", label: "Photo Permission Signature" },
-  { form: "photo", section: "Photo / Permissions", key: "prepOther", label: "Other External Preparations" },
+
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppChildName", label: "Child Name" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppChildDob", label: "Date of Birth" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppParentName", label: "Parent or Guardian Name" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppInitialsSleep", label: "Parent Initials — Safe Sleep" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppInitialsProhibited", label: "Parent Initials — Prohibited Behaviors" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppInitialsFamily", label: "Parent Initials — Family Participation" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppNeedsDiscussed", label: "Individual Care Needs Discussed" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppAgreedPractices", label: "Agreed Practices / Accommodations" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppParentQuestions", label: "Parent Questions or Concerns" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppPrintName", label: "Printed Name" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppSignDate", label: "Signature Date" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppSignature", label: "Parent or Guardian Signature" },
+  { form: "safeSleep", section: "Parent Safe Sleep Procedure", key: "ssChildName", label: "Child Name" },
+  { form: "safeSleep", section: "Parent Safe Sleep Procedure", key: "ssChildDob", label: "Date of Birth" },
+  { form: "safeSleep", section: "Parent Safe Sleep Procedure", key: "ssPrintName", label: "Printed Name" },
+  { form: "safeSleep", section: "Parent Safe Sleep Procedure", key: "ssSignDate", label: "Signature Date" },
+  { form: "safeSleep", section: "Parent Safe Sleep Procedure", key: "ssSignature", label: "Parent or Guardian Signature" },
+  { form: "strollerRide", section: "Stroller Ride & Nature Walk", key: "srChildName", label: "Child Name" },
+  { form: "strollerRide", section: "Stroller Ride & Nature Walk", key: "srChildDob", label: "Date of Birth" },
+  { form: "strollerRide", section: "Stroller Ride & Nature Walk", key: "srPrintName", label: "Printed Name" },
+  { form: "strollerRide", section: "Stroller Ride & Nature Walk", key: "srSignDate", label: "Signature Date" },
+  { form: "strollerRide", section: "Stroller Ride & Nature Walk", key: "srSignature", label: "Parent or Guardian Signature" },
+  { form: "watchMeGrow", section: "Watch Me Grow Registration", key: "wmgChildName", label: "Child Name" },
+  { form: "watchMeGrow", section: "Watch Me Grow Registration", key: "wmgPrintName", label: "Printed Name" },
+  { form: "watchMeGrow", section: "Watch Me Grow Registration", key: "wmgSignDate", label: "Signature Date" },
+  { form: "watchMeGrow", section: "Watch Me Grow Registration", key: "wmgSignature", label: "Parent or Guardian Signature" },
 ];
 
 const CHECKBOX_FIELDS = [
-  { form: "enrollment", section: "Enrollment", key: "mealBreakfast", label: "Meal — Breakfast" },
-  { form: "enrollment", section: "Enrollment", key: "mealLunch", label: "Meal — Lunch" },
-  { form: "enrollment", section: "Enrollment", key: "mealSnack", label: "Meal — PM Snack" },
   { form: "financial", section: "Financial Agreement", key: "finAgree", label: "Financial Agreement Acknowledgment" },
   { form: "ies", section: "Meal Benefit (IES)", key: "iesDownloadAck", label: "IES Download Acknowledgment" },
   { form: "handbook", section: "Parent Handbook", key: "hbAgree", label: "Parent Handbook Acknowledgment" },
   { form: "photo", section: "Photo / Permissions", key: "photoAgree", label: "Photo / Video Permission Agreement" },
-  { form: "photo", section: "Photo / Permissions", key: "permWaterSprinkler", label: "Water Permission — Sprinkler" },
-  { form: "photo", section: "Photo / Permissions", key: "permWaterSplashing", label: "Water Permission — Play Splashing" },
-  { form: "photo", section: "Photo / Permissions", key: "permWaterPools", label: "Water Permission — Swimming Pools" },
-  { form: "photo", section: "Photo / Permissions", key: "permWaterTable", label: "Water Permission — Water Table Play" },
-  { form: "photo", section: "Photo / Permissions", key: "prepBabyWipes", label: "External Prep — Baby Wipes" },
-  { form: "photo", section: "Photo / Permissions", key: "prepBandAids", label: "External Prep — Band-Aids" },
-  { form: "photo", section: "Photo / Permissions", key: "prepNeosporin", label: "External Prep — Neosporin" },
-  { form: "photo", section: "Photo / Permissions", key: "prepBactine", label: "External Prep — Bactine" },
-  { form: "photo", section: "Photo / Permissions", key: "prepSunscreen", label: "External Prep — Sunscreen" },
-  { form: "photo", section: "Photo / Permissions", key: "prepInsectRepellent", label: "External Prep — Insect Repellent" },
-  { form: "photo", section: "Photo / Permissions", key: "prepNonRxOintment", label: "External Prep — Non-prescription Ointment" },
-  { form: "photo", section: "Photo / Permissions", key: "prepBabyPowder", label: "External Prep — Baby Powder" },
-  { form: "transport", section: "Transportation", key: "trMon", label: "Transport Day — Monday", whenTransport: true },
-  { form: "transport", section: "Transportation", key: "trTue", label: "Transport Day — Tuesday", whenTransport: true },
-  { form: "transport", section: "Transportation", key: "trWed", label: "Transport Day — Wednesday", whenTransport: true },
-  { form: "transport", section: "Transportation", key: "trThu", label: "Transport Day — Thursday", whenTransport: true },
-  { form: "transport", section: "Transportation", key: "trFri", label: "Transport Day — Friday", whenTransport: true },
-  { form: "transport", section: "Transportation", key: "trPermEmergency", label: "Transport Permission — Emergency Care", whenTransport: true },
-  { form: "transport", section: "Transportation", key: "trPermFieldTrips", label: "Transport Permission — Field Trips", whenTransport: true },
-  { form: "transport", section: "Transportation", key: "trPermSchool", label: "Transport Permission — School", whenTransport: true },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppAckPolicies", label: "Acknowledgment — Center Policies" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppAckSafeSleep", label: "Acknowledgment — Safe Sleep" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppAckProgress", label: "Acknowledgment — Child Progress" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppAckSpecialNeeds", label: "Acknowledgment — Special Needs" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppAckShakenBaby", label: "Acknowledgment — Shaken Baby Prevention" },
+  { form: "policyAck", section: "Parent Policy Acknowledgment", key: "ppAckParticipation", label: "Acknowledgment — Family Participation" },
+  { form: "safeSleep", section: "Parent Safe Sleep Procedure", key: "ssAckReceived", label: "Acknowledgment — Received Copy" },
+  { form: "safeSleep", section: "Parent Safe Sleep Procedure", key: "ssAckQuestions", label: "Acknowledgment — Questions Opportunity" },
+  { form: "watchMeGrow", section: "Watch Me Grow Registration", key: "wmgAckLiveFeed", label: "Acknowledgment — Live Feed Only" },
+  { form: "watchMeGrow", section: "Watch Me Grow Registration", key: "wmgAckNoScreenshots", label: "Acknowledgment — No Screenshots" },
+  { form: "watchMeGrow", section: "Watch Me Grow Registration", key: "wmgAckCameraExcludes", label: "Acknowledgment — Camera Access Exclusions" },
 ];
 
-/** Fields rendered on the PDF packet that are not backed by a web form input. */
-function collectPdfPacketBlanks(normalized, { transportNeeded, emergencyNeeded }) {
-  const d = normalized || {};
-  const blanks = [];
-  const mother = d.mother || {};
-  const father = d.father || {};
-  const medical = d.medical || {};
-  const contacts = d.emergencyContacts || [];
-
-  const push = (section, label) => blanks.push({ section, label });
-
-  const pdfOnlyFields = [
-    { section: "Enrollment", label: "Child's SSN (on enrollment form)", value: d.child?.ssn },
-    { section: "Enrollment", label: "Mother / Guardian Home Phone", value: mother.homePhone },
-    { section: "Enrollment", label: "Mother / Guardian Work Phone", value: mother.workPhone },
-    { section: "Enrollment", label: "Mother / Guardian Work Address", value: mother.workAddress },
-    { section: "Enrollment", label: "Mother / Guardian Work Hours", value: mother.workHours },
-    { section: "Enrollment", label: "Mother / Guardian SSN", value: mother.ssn },
-    { section: "Enrollment", label: "Mother / Guardian Driver's License", value: mother.driversLicense },
-    { section: "Enrollment", label: "Mother / Guardian Birthday", value: mother.birthday },
-    { section: "Enrollment", label: "Father / Guardian Home Phone", value: father.homePhone },
-    { section: "Enrollment", label: "Father / Guardian Work Phone", value: father.workPhone },
-    { section: "Enrollment", label: "Father / Guardian Work Address", value: father.workAddress },
-    { section: "Enrollment", label: "Father / Guardian Work Hours", value: father.workHours },
-    { section: "Enrollment", label: "Father / Guardian SSN", value: father.ssn },
-    { section: "Enrollment", label: "Father / Guardian Driver's License", value: father.driversLicense },
-    { section: "Enrollment", label: "Father / Guardian Birthday", value: father.birthday },
-    { section: "Enrollment", label: "Emergency Contact 1 Address", value: contacts[0]?.address },
-    { section: "Enrollment", label: "Emergency Contact 2 Address", value: contacts[1]?.address },
-    { section: "Enrollment", label: "Emergency Contact 3 — Name", value: contacts[2]?.name },
-    { section: "Enrollment", label: "Emergency Contact 3 — Home Phone", value: contacts[2]?.homePhone },
-    { section: "Enrollment", label: "Emergency Contact 3 — Work Phone", value: contacts[2]?.workPhone },
-    { section: "Enrollment", label: "Emergency Contact 3 — Cell Phone", value: contacts[2]?.cellPhone },
-    { section: "Enrollment", label: "Emergency Contact 3 — Address", value: contacts[2]?.address },
-    { section: "Enrollment", label: "Emergency Contact 3 — Relationship", value: contacts[2]?.relationship },
-    { section: "Emergency Medical", label: "Physician Address", value: medical.doctorAddress, whenEmergency: true },
-    { section: "Emergency Medical", label: "Insurance Information", value: medical.insurance, whenEmergency: true },
-    { section: "Policy Acknowledgment", label: "Staff Member Name (if applicable)", value: d.policyAck?.staffName },
-  ];
-
-  pdfOnlyFields.forEach(({ section, label, value, whenEmergency }) => {
-    if (whenEmergency && !emergencyNeeded) return;
-    if (isBlank(value)) push(section, label);
-  });
-
-  return blanks;
-}
-
-function collectCompositeBlanks(data, { transportNeeded, emergencyNeeded }) {
+function collectCompositeBlanks(data, { transportNeeded }) {
   const blanks = [];
   const en = data?.enrollment || {};
   const ph = data?.photo || {};
@@ -221,6 +193,16 @@ function collectCompositeBlanks(data, { transportNeeded, emergencyNeeded }) {
     blanks.push({ section: "Photo / Permissions", label: "Photo / Video Release Selection" });
   }
 
+  const ss = data?.safeSleep || {};
+  if (!ss.ssAckPhysician && !ss.ssAckPhysicianNA) {
+    blanks.push({ section: "Parent Safe Sleep Procedure", label: "Physician Instructions Selection" });
+  }
+
+  const sr = data?.strollerRide || {};
+  if (!sr.srPermYes && !sr.srPermNo) {
+    blanks.push({ section: "Stroller Ride & Nature Walk", label: "Permission Selection" });
+  }
+
   if (transportNeeded) {
     const tr = data?.transport || {};
     const anyDay = tr.trMon || tr.trTue || tr.trWed || tr.trThu || tr.trFri;
@@ -229,16 +211,12 @@ function collectCompositeBlanks(data, { transportNeeded, emergencyNeeded }) {
     }
   }
 
-  if (emergencyNeeded) {
-    // no extra composite fields
-  }
-
   const files = data?.uploads?.files || {};
-  (ALC_CONFIG.uploads || []).forEach((def) => {
+  (ALC_CONFIG.uploads || []).filter((def) => def.required).forEach((def) => {
     if (!(files[def.id] || []).length) {
       blanks.push({
         section: "Documents",
-        label: `${def.label}${def.required ? "" : " (optional)"}`,
+        label: def.label,
       });
     }
   });
@@ -246,7 +224,7 @@ function collectCompositeBlanks(data, { transportNeeded, emergencyNeeded }) {
   return blanks;
 }
 
-export function collectBlankFields(data = {}, normalized = null) {
+export function collectBlankFields(data = {}) {
   const en = data?.enrollment || {};
   const programs = en.programs;
   const transportNeeded = needsTransport(programs);
@@ -258,6 +236,18 @@ export function collectBlankFields(data = {}, normalized = null) {
     if (def.whenTransport && !transportNeeded) return;
     if (def.whenEmergency && !emergencyNeeded) return;
     const formData = data?.[def.form] || {};
+    if (def.optionalGroup === "secondParty") {
+      const secondPartyStarted = [
+        "rp2Name", "rp2Dob", "rp2Dl", "rp2State", "rp2Address",
+        "rp2CityStateZip", "rp2Employer", "rp2Phone", "rp2Email",
+      ].some((key) => !isBlank(formData[key]));
+      if (!secondPartyStarted) return;
+    }
+    if (def.optionalGroup === "card") {
+      const cardStarted = ["finCardholderName", "finCardNumber", "finCardExp", "finCardCvv"]
+        .some((key) => !isBlank(formData[key]));
+      if (!cardStarted) return;
+    }
     if (isBlank(formData[def.key])) {
       blanks.push({ section: def.section, label: def.label });
     }
@@ -271,11 +261,7 @@ export function collectBlankFields(data = {}, normalized = null) {
     }
   });
 
-  if (normalized) {
-    blanks.push(...collectPdfPacketBlanks(normalized, { transportNeeded, emergencyNeeded }));
-  }
-
-  blanks.push(...collectCompositeBlanks(data, { transportNeeded, emergencyNeeded }));
+  blanks.push(...collectCompositeBlanks(data, { transportNeeded }));
 
   const seen = new Set();
   return blanks.filter((item) => {
@@ -295,7 +281,10 @@ export function groupBlankFields(blanks) {
     "Meal Benefit (IES)",
     "Parent Handbook",
     "Photo / Permissions",
-    "Policy Acknowledgment",
+    "Parent Policy Acknowledgment",
+    "Parent Safe Sleep Procedure",
+    "Stroller Ride & Nature Walk",
+    "Watch Me Grow Registration",
     "Documents",
   ];
 

@@ -1,8 +1,18 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { flushSync } from "react-dom";
 import ALC_CONFIG from "../config";
 import { ALL_FORMS, I18N } from "../constants";
-import { needsEmergencyMedicalForm as checkEmergencyMedical } from "../utils/programSelection";
-import { uppercaseFormPayload } from "../utils/formValues";
+import {
+  needsEmergencyMedicalForm as checkEmergencyMedical,
+  needsTransportForm as checkTransport,
+} from "../utils/programSelection";
+import {
+  joinPersonName,
+  resolveResponsiblePartyName,
+  isFirstNameOnlyPrefill,
+  parentInitialsFromEnrollment,
+} from "../utils/formValues";
+import { firstIncompletePacketStep, missingRequiredUploads } from "../utils/requiredDocuments";
 
 const STORAGE_KEY = "alc-enrollment-v1-multi";
 const LANG_KEY = "alc-enrollment-lang";
@@ -46,6 +56,9 @@ export function EnrollmentProvider({ children }) {
   });
   const [toast, setToast] = useState({ message: "", visible: false });
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
+  const incompleteStepRef = useRef(null);
+  const gateToastRef = useRef(null);
+  const allowDoneAfterSubmitRef = useRef(false);
 
   // Sync state to localStorage
   useEffect(() => {
@@ -66,23 +79,45 @@ export function EnrollmentProvider({ children }) {
     }
   }, [lang]);
 
+  const redirectIfDoneBlocked = useCallback((viewId) => {
+    if (viewId !== "done") return viewId;
+    const blocked = incompleteStepRef.current;
+    if (!blocked) return viewId;
+
+    const labels = (blocked.missingDocs || []).map((item) => item.label);
+    const message = blocked.id === "uploads" && labels.length
+      ? `Upload every required document before finishing: ${labels.join(", ")}`
+      : "Complete every required form and the required documents before the completion page.";
+    setToast({ message, visible: true });
+    clearTimeout(gateToastRef.current);
+    gateToastRef.current = setTimeout(() => {
+      setToast((prev) => ({ ...prev, visible: false }));
+    }, 4200);
+    return blocked.id || "uploads";
+  }, []);
+
   // Hash change navigation listener
   useEffect(() => {
     const handleHashChange = () => {
       let h = (window.location.hash || "#home").slice(1) || "home";
       if (h === "auth") h = "home";
-      setCurrentView(h);
+      const next = redirectIfDoneBlocked(h);
+      if (next !== h) {
+        window.location.hash = `#${next}`;
+      }
+      setCurrentView(next);
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
+  }, [redirectIfDoneBlocked]);
 
   const navigateTo = useCallback((viewId) => {
-    window.location.hash = `#${viewId}`;
-    setCurrentView(viewId);
+    const next = redirectIfDoneBlocked(viewId);
+    window.location.hash = `#${next}`;
+    setCurrentView(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  }, [redirectIfDoneBlocked]);
 
   const showToast = useCallback((message) => {
     setToast({ message, visible: true });
@@ -140,9 +175,7 @@ export function EnrollmentProvider({ children }) {
   }, [state.data?.enrollment]);
 
   const needsTransportForm = useCallback(() => {
-    const programs = ALC_CONFIG.programs || [];
-    const selected = new Set(selectedPrograms());
-    return programs.some((p) => p.transport && selected.has(p.id));
+    return checkTransport(selectedPrograms());
   }, [selectedPrograms]);
 
   const needsEmergencyMedicalForm = useCallback(() => {
@@ -163,6 +196,31 @@ export function EnrollmentProvider({ children }) {
       return false;
     });
   }, [needsTransportForm, needsEmergencyMedicalForm]);
+
+  incompleteStepRef.current =
+    state.flowMode === "waitlist"
+      ? null
+      : firstIncompletePacketStep(activeForms, state.completed, state.data);
+
+  useEffect(() => {
+    if (currentView !== "done" || state.flowMode === "waitlist") return;
+    const blocked = incompleteStepRef.current;
+    if (!blocked) return;
+    const next = redirectIfDoneBlocked("done");
+    if (next !== "done") {
+      window.location.hash = `#${next}`;
+      setCurrentView(next);
+    }
+  }, [currentView, state.flowMode, state.completed, state.data, activeForms, redirectIfDoneBlocked]);
+
+  useEffect(() => {
+    if (state.flowMode === "waitlist" || !state.completed.uploads) return;
+    if (missingRequiredUploads(state.data).length === 0) return;
+    setState((prev) => ({
+      ...prev,
+      completed: { ...prev.completed, uploads: false },
+    }));
+  }, [state.flowMode, state.completed.uploads, state.data]);
 
   const completedCount = useMemo(() => {
     return activeForms.filter((f) => !!state.completed[f.id]).length;
@@ -238,13 +296,11 @@ export function EnrollmentProvider({ children }) {
     const en = currentState.data?.enrollment || {};
     const fin = currentState.data?.financial || {};
 
-    const fullName = (first, mi, last) =>
-      [first, mi, last].map((p) => (p || "").trim()).filter(Boolean).join(" ").replace(/\s+/g, " ");
-
-    const child = fullName(en.childFirst, en.childMI, en.childLast) || fin.finChildName || "";
-    const mom = fullName(en.momFirst, en.momMI, en.momLast);
-    const dad = fullName(en.dadFirst, en.dadMI, en.dadLast);
-    const signer = fin.rpName || mom || dad || "";
+    const child = joinPersonName(en.childFirst, en.childMI, en.childLast) || fin.finChildName || "";
+    const mom = joinPersonName(en.momFirst, en.momMI, en.momLast);
+    const dad = joinPersonName(en.dadFirst, en.dadMI, en.dadLast);
+    const signer = resolveResponsiblePartyName(fin, en) || "";
+    const parentInitials = parentInitialsFromEnrollment(en, fin);
 
     const city = (en.childCity || "").trim();
     const zip = (en.childZip || "").trim();
@@ -309,6 +365,40 @@ export function EnrollmentProvider({ children }) {
         photoSignature: signer,
         photoDate: today,
       },
+      policyAck: {
+        ppChildName: child,
+        ppChildDob: dob,
+        ppParentName: signer,
+        ppCenterLocation: ALC_CONFIG.locations?.[locId]?.legalName || ALC_CONFIG.locations?.[locId]?.name || "",
+        ppInitialsSleep: parentInitials,
+        ppInitialsProhibited: parentInitials,
+        ppInitialsFamily: parentInitials,
+        ppPrintName: signer,
+        ppSignature: signer,
+        ppSignDate: today,
+      },
+      safeSleep: {
+        ssChildName: child,
+        ssChildDob: dob,
+        ssCenterLocation: ALC_CONFIG.locations?.[locId]?.legalName || ALC_CONFIG.locations?.[locId]?.name || "",
+        ssPrintName: signer,
+        ssSignature: signer,
+        ssSignDate: today,
+      },
+      strollerRide: {
+        srChildName: child,
+        srChildDob: dob,
+        srCenterLocation: ALC_CONFIG.locations?.[locId]?.legalName || ALC_CONFIG.locations?.[locId]?.name || "",
+        srPrintName: signer,
+        srSignature: signer,
+        srSignDate: today,
+      },
+      watchMeGrow: {
+        wmgChildName: child,
+        wmgPrintName: signer,
+        wmgSignature: signer,
+        wmgSignDate: today,
+      },
     };
   }, []);
 
@@ -317,9 +407,18 @@ export function EnrollmentProvider({ children }) {
       setState((prev) => {
         const carryMap = computeCarryForward(prev);
         const nextData = { ...prev.data };
+        const enrollment = prev.data?.enrollment || {};
         let changed = false;
 
         const isBlank = (v) => v === undefined || v === null || v === "" || v === false;
+        const STALE_SIGNER_KEYS = {
+          financial: new Set(["rpName", "finPrintName", "finSignature"]),
+          photo: new Set(["photoPrint", "photoSignature"]),
+          watchMeGrow: new Set(["wmgPrintName", "wmgSignature"]),
+        };
+        const AUTO_REFRESH_KEYS = {
+          policyAck: new Set(["ppInitialsSleep", "ppInitialsProhibited", "ppInitialsFamily"]),
+        };
 
         Object.entries(carryMap).forEach(([formId, source]) => {
           if (onlyForm && onlyForm !== formId) return;
@@ -329,7 +428,11 @@ export function EnrollmentProvider({ children }) {
 
           Object.entries(source).forEach(([key, val]) => {
             if (isBlank(val)) return;
-            if (formForce || isBlank(target[key])) {
+            const staleSignerName =
+              STALE_SIGNER_KEYS[formId]?.has(key) &&
+              isFirstNameOnlyPrefill(target[key], enrollment);
+            const autoRefresh = AUTO_REFRESH_KEYS[formId]?.has(key);
+            if (formForce || isBlank(target[key]) || staleSignerName || autoRefresh) {
               if (target[key] !== val) {
                 target[key] = val;
                 formChanged = true;
@@ -352,24 +455,31 @@ export function EnrollmentProvider({ children }) {
   const saveForm = useCallback(
     (formId, formData, markComplete = true, options = {}) => {
       const { silent = false } = options;
-      const payload = formId === "uploads" ? formData : uppercaseFormPayload(formData);
-      setState((prev) => {
-        const next = {
-          ...prev,
-          data: {
-            ...prev.data,
-            [formId]: {
-              ...(prev.data[formId] || {}),
-              ...payload,
+      const payload = formData;
+      const commit = () => {
+        setState((prev) => {
+          const next = {
+            ...prev,
+            data: {
+              ...prev.data,
+              [formId]: {
+                ...(prev.data[formId] || {}),
+                ...payload,
+              },
             },
-          },
-          completed: {
-            ...prev.completed,
-            [formId]: markComplete ? true : prev.completed[formId],
-          },
-        };
-        return next;
-      });
+            completed: {
+              ...prev.completed,
+              [formId]: markComplete ? true : prev.completed[formId],
+            },
+          };
+          return next;
+        });
+      };
+      if (markComplete) {
+        flushSync(commit);
+      } else {
+        commit();
+      }
 
       if (formId === "enrollment" || formId === "financial") {
         setTimeout(() => {
@@ -392,7 +502,7 @@ export function EnrollmentProvider({ children }) {
 
   const autoSaveForm = useCallback(
     (formId, formData) => {
-      const payload = formId === "uploads" ? formData : uppercaseFormPayload(formData);
+      const payload = formData;
       setState((prev) => ({
         ...prev,
         data: {
@@ -502,8 +612,7 @@ export function EnrollmentProvider({ children }) {
           });
         }
 
-        const reqList = (ALC_CONFIG.uploads || []).filter((u) => u.required);
-        const allReqPresent = reqList.every((u) => (files[u.id] || []).length > 0);
+        const allReqPresent = missingRequiredUploads({ uploads: { ...uploads, files } }).length === 0;
 
         return {
           ...prev,
@@ -517,7 +626,7 @@ export function EnrollmentProvider({ children }) {
           },
           completed: {
             ...prev.completed,
-            uploads: allReqPresent ? true : prev.completed.uploads,
+            uploads: allReqPresent ? prev.completed.uploads : false,
           },
         };
       });

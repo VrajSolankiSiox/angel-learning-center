@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
-import { formatPdfValue, getLogoUrl, SIGNATURE_FONT } from "./PdfShared";
+import { formatPdfValue, getLogoUrl, PdfSignatureOnLine } from "./PdfShared";
 import ALC_CONFIG from "../config";
 
 const REGISTRATION_FEE = `$${Number(ALC_CONFIG.waitlist?.registrationFee ?? 150).toFixed(2)}`;
@@ -151,7 +151,6 @@ const s = StyleSheet.create({
     paddingBottom: 1,
   },
   fieldValue: { fontSize: 8, color: "#0645AD" },
-  signatureValue: { fontFamily: SIGNATURE_FONT },
   sigSection: { marginTop: 4 },
   sigParentLabel: { fontSize: 8, fontWeight: "bold", marginBottom: 3 },
   sigRow: { flexDirection: "row", marginBottom: 8, gap: 6 },
@@ -198,9 +197,7 @@ function SignatureRow({ title, printName, signature, date }) {
           <Text style={s.sigHint}>Printed Name</Text>
         </View>
         <View style={s.sigCol}>
-          <View style={s.sigLine}>
-            <Text style={[s.fieldValue, s.signatureValue]}>{val(signature) || " "}</Text>
-          </View>
+          <PdfSignatureOnLine value={signature} lineStyle={{ minHeight: 14 }} />
           <Text style={s.sigHint}>Signature</Text>
         </View>
         <View style={[s.sigCol, { flex: 0.7 }]}>

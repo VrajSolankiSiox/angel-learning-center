@@ -48,17 +48,18 @@ export function getUploadsForMerge(data) {
   const defs = ALC_CONFIG.uploads || [];
   const ordered = [];
 
-  const pushWithData = (list) => {
+  const pushWithData = (list, def) => {
     (list || []).forEach((file) => {
-      if (file?.dataUrl) ordered.push(file);
+      if (file?.dataUrl) ordered.push({ ...file, uploadId: def?.id || "", uploadLabel: def?.label || "" });
     });
   };
 
-  pushWithData(files[IES_UPLOAD_ID]);
+  const iesDef = defs.find((def) => def.id === IES_UPLOAD_ID);
+  pushWithData(files[IES_UPLOAD_ID], iesDef);
 
   defs.forEach((def) => {
     if (def.id === IES_UPLOAD_ID) return;
-    pushWithData(files[def.id]);
+    pushWithData(files[def.id], def);
   });
 
   return ordered;
@@ -67,6 +68,33 @@ export function getUploadsForMerge(data) {
 async function dataUrlToBytes(dataUrl) {
   const response = await fetch(dataUrl);
   return response.arrayBuffer();
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Could not read uploaded image"));
+    img.src = src;
+  });
+}
+
+/** Turn webp and other browser-readable images into a JPEG pdf-lib can embed. */
+async function rasterToJpegBytes(dataUrl) {
+  if (typeof document === "undefined") return null;
+  const img = await loadImageElement(dataUrl);
+  const canvas = document.createElement("canvas");
+  const maxEdge = 2000;
+  const scale = Math.min(1, maxEdge / Math.max(img.width || 1, img.height || 1));
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  if (!blob) return null;
+  return blob.arrayBuffer();
 }
 
 async function appendImagePage(packetDoc, bytes, mimeType) {
@@ -108,7 +136,14 @@ async function appendUploadToPacket(packetDoc, upload) {
   }
 
   if (isImageFile(upload)) {
-    return appendImagePage(packetDoc, bytes, imageMimeType(upload, bytes));
+    let mime = imageMimeType(upload, bytes);
+    let imageBytes = bytes;
+    if (mime !== "image/png" && mime !== "image/jpeg") {
+      imageBytes = await rasterToJpegBytes(upload.dataUrl);
+      mime = "image/jpeg";
+      if (!imageBytes) return false;
+    }
+    return appendImagePage(packetDoc, imageBytes, mime);
   }
 
   return false;

@@ -19,8 +19,6 @@ export function Header() {
         />
       </a>
       <nav className="top-nav">
-        <a href="#home" data-nav="home">Home</a>
-        <a href="#packet" data-nav="packet">Forms</a>
         <button type="button" className="btn btn-start-over" id="resetPacket" onClick={resetPacket}>
           {t("resetPacket") || "Start over"}
         </button>

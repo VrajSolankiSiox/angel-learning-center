@@ -241,3 +241,9 @@ export function needsEmergencyMedicalForm(selected) {
   const programs = normalizePrograms(selected);
   return programs.some((id) => EMERGENCY_MEDICAL_PROGRAMS.includes(id));
 }
+
+/** School transport agreement — before / after / before & after care only. */
+export function needsTransportForm(selected) {
+  const programs = normalizePrograms(selected);
+  return programs.some((id) => CARE_PROGRAMS.includes(id));
+}

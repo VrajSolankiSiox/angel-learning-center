@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useEnrollment } from "../context/EnrollmentContext";
 import { useFormDraft } from "../hooks/useFormDraft";
 import { completeFormAndGo } from "../utils/formNext";
+import { digitsOnly } from "../utils/formValues";
 
 export function FinancialView() {
   const { state, saveForm, needsTransportForm, needsEmergencyMedicalForm, applyCarryForward, t, navigateTo } = useEnrollment();
@@ -58,6 +59,8 @@ export function FinancialView() {
     const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
       setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else if (name === "rpDl" || name === "rp2Dl") {
+      setFormData((prev) => ({ ...prev, [name]: digitsOnly(value, 20) }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -133,8 +136,16 @@ export function FinancialView() {
               <input type="date" name="rpDob" value={formData.rpDob} onChange={handleChange} />
             </label>
             <label>
-              <span data-i18n="dl">{t("dl") || "Driver’s license / State ID"}</span>
-              <input name="rpDl" value={formData.rpDl} onChange={handleChange} />
+              <span data-i18n="dl">{t("dl") || "Driver’s license / State ID #"}</span>
+              <input
+                name="rpDl"
+                value={formData.rpDl}
+                onChange={handleChange}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                placeholder="Numbers only"
+              />
             </label>
             <label>
               <span data-i18n="state">{t("state") || "State"}</span>
@@ -185,8 +196,16 @@ export function FinancialView() {
               <input type="date" name="rp2Dob" value={formData.rp2Dob} onChange={handleChange} />
             </label>
             <label>
-              <span data-i18n="dl">{t("dl") || "Driver’s license / State ID"}</span>
-              <input name="rp2Dl" value={formData.rp2Dl} onChange={handleChange} />
+              <span data-i18n="dl">{t("dl") || "Driver’s license / State ID #"}</span>
+              <input
+                name="rp2Dl"
+                value={formData.rp2Dl}
+                onChange={handleChange}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                placeholder="Numbers only"
+              />
             </label>
             <label>
               <span data-i18n="state">{t("state") || "State"}</span>

@@ -4,12 +4,14 @@ import { useEnrollment } from "../context/EnrollmentContext";
 import { filesToUploadMeta, shouldRetainUploadData } from "../utils/uploadFileData";
 import { useFormDraft } from "../hooks/useFormDraft";
 import { completeFormAndGo } from "../utils/formNext";
+import { missingRequiredUploads } from "../utils/requiredDocuments";
 
 export function UploadsView() {
-  const { state, saveForm, uploadFile, t, navigateTo } = useEnrollment();
+  const { state, saveForm, uploadFile, showToast, t, navigateTo } = useEnrollment();
 
   const savedData = state.data?.uploads || {};
   const [upConfirm, setUpConfirm] = useState(!!savedData.upConfirm);
+  const [uploadError, setUploadError] = useState("");
 
   useFormDraft("uploads", { upConfirm });
 
@@ -36,19 +38,22 @@ export function UploadsView() {
   };
 
   const handleNext = (e) => {
-    const missing = requiredList.filter((u) => !(files[u.id] || []).length);
-    if (missing.length > 0) {
-      const ok = window.confirm(
-        `Missing required documents:\n• ${missing.map((m) => m.label).join("\n• ")}\n\nContinue anyway? Staff can upload missing files later.`
-      );
-      if (!ok) return;
+    const missing = missingRequiredUploads(state.data);
+    if (!upConfirm || missing.length > 0) {
+      const message = !upConfirm
+        ? "Confirm that the required documents are complete before finishing."
+        : `Upload every required document before finishing: ${missing.map((item) => item.label).join(", ")}`;
+      setUploadError(message);
+      showToast(message);
+      return;
     }
 
+    setUploadError("");
     completeFormAndGo({
       event: e,
       saveForm,
       formId: "uploads",
-      getPayload: () => ({ upConfirm }),
+      getPayload: () => ({ upConfirm: true }),
       navigateTo,
       target: "done",
     });
@@ -115,7 +120,9 @@ export function UploadsView() {
           <p className="eyebrow">Documents</p>
           <h2>Required uploads</h2>
           <p className="section-lead">
-            Required: parent SSN document(s) (1 or 2), child SSN, birth certificate, immunization / shot records, proof of GA residency (any one parent), and parent/guardian photo ID(s). Optional: completed Meal Benefit (IES) form and credit card photos for automated billing. Staff can add any missing document later from the Staff view.
+            These documents are required before the packet can be completed: parent SSN, child SSN, birth certificate,
+            immunization / shot records, proof of GA residency, and parent/guardian photo ID. Optional items can be
+            added if they apply.
           </p>
         </div>
 
@@ -132,8 +139,13 @@ export function UploadsView() {
               onChange={(e) => setUpConfirm(e.target.checked)}
               required
             />
-            I confirm these documents are accurate and complete for enrollment review (or will be completed by staff later).
+            I confirm the required documents above are uploaded and ready for enrollment review.
           </label>
+          {uploadError ? (
+            <p className="hint" role="alert">
+              {uploadError}
+            </p>
+          ) : null}
         </fieldset>
 
         <fieldset>

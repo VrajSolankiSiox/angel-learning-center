@@ -1,16 +1,24 @@
 import React from "react";
 import { downloadPdfBundle, downloadWaitlistPdf } from "../pdf/pdfGenerator";
 import { useEnrollment } from "../context/EnrollmentContext";
+import { useSubmitEnrollmentEmail } from "../hooks/useSubmitEnrollmentEmail";
+import { getNotificationEmail } from "../utils/submitEnrollmentEmail";
 
 export function WaitlistDoneView() {
   const { state, activeLocation, showToast, navigateTo } = useEnrollment();
+  const { status: emailStatus, error: emailError, sentTo } = useSubmitEnrollmentEmail({
+    type: "waitlist",
+    state,
+    location: activeLocation,
+    autoSend: true,
+  });
 
   const en = state.data?.enrollment || {};
   const childName =
     [en.childFirst, en.childMI, en.childLast].filter(Boolean).join(" ").trim() ||
     en.childPreferred ||
     "Child";
-  const inbox = activeLocation?.inbox || "savannah@angellearningcenter.com";
+  const inbox = sentTo || getNotificationEmail(activeLocation);
 
   const handleDownload = async (type) => {
     try {
@@ -43,9 +51,14 @@ export function WaitlistDoneView() {
         <p className="eyebrow">Waitlist · next steps</p>
         <h2>Secure your future seat</h2>
         <p className="section-lead">
-          Download your completed waitlist agreement and enrollment details for {childName}. The center will contact you
-          when a spot becomes available.
+          {emailStatus === "sending"
+            ? `Sending your waitlist agreement and enrollment details for ${childName}…`
+            : emailStatus === "error"
+              ? `Your waitlist forms for ${childName} are complete. Download the PDF below. We could not email the center automatically.`
+              : `Your waitlist agreement and enrollment details for ${childName} have been emailed to Angel Learning Center. You can also download a copy below.`}
         </p>
+
+        {emailStatus === "error" && emailError ? <p className="hint" role="alert">{emailError}</p> : null}
 
         <div className="mail-summary" id="waitlistMailSummary">
           <div className="mail-row">
