@@ -1,32 +1,52 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { downloadPdfBundle, downloadWaitlistPdf } from "../pdf/pdfGenerator";
 import { useEnrollment } from "../context/EnrollmentContext";
 import { useSubmitEnrollmentEmail } from "../hooks/useSubmitEnrollmentEmail";
 import { getNotificationEmail } from "../utils/submitEnrollmentEmail";
 
 export function WaitlistDoneView() {
-  const { state, activeLocation, showToast, navigateTo } = useEnrollment();
+  const { state, activeLocation, showToast, navigateTo, clearPacket } = useEnrollment();
   const { status: emailStatus, error: emailError, sentTo } = useSubmitEnrollmentEmail({
     type: "waitlist",
     state,
     location: activeLocation,
     autoSend: true,
   });
+  const [receiptName, setReceiptName] = useState("");
+  const clearedRef = useRef(false);
+  const packetSnapshotRef = useRef(null);
+
+  useEffect(() => {
+    if (emailStatus !== "sent" || clearedRef.current) return;
+    const enNow = state.data?.enrollment || {};
+    const name =
+      [enNow.childFirst, enNow.childMI, enNow.childLast].filter(Boolean).join(" ").trim() ||
+      enNow.childPreferred ||
+      "Child";
+    clearedRef.current = true;
+    packetSnapshotRef.current = { data: state.data, location: activeLocation };
+    setReceiptName(name);
+    clearPacket();
+  }, [emailStatus, state, activeLocation, clearPacket]);
 
   const en = state.data?.enrollment || {};
   const childName =
+    receiptName ||
     [en.childFirst, en.childMI, en.childLast].filter(Boolean).join(" ").trim() ||
     en.childPreferred ||
     "Child";
   const inbox = sentTo || getNotificationEmail(activeLocation);
 
   const handleDownload = async (type) => {
+    const snapshot = packetSnapshotRef.current;
+    const downloadState = snapshot ? { data: snapshot.data, locationId: snapshot.location?.id } : state;
+    const downloadLocation = snapshot?.location || activeLocation;
     try {
       if (type === "waitlist") {
-        await downloadWaitlistPdf({ state, location: activeLocation });
+        await downloadWaitlistPdf({ state: downloadState, location: downloadLocation });
         showToast("Waitlist packet PDF downloading…");
       } else {
-        await downloadPdfBundle({ state, location: activeLocation, which: "enrollment" });
+        await downloadPdfBundle({ state: downloadState, location: downloadLocation, which: "enrollment" });
         showToast("Enrollment PDF downloading…");
       }
     } catch (err) {
@@ -81,8 +101,9 @@ export function WaitlistDoneView() {
         </div>
 
         <p className="hint">
-          The waitlist packet PDF includes your completed enrollment form first, followed by the waitlist agreement.
-          Bring the signed packet and payment to the center to secure your place on the waitlist.
+          {receiptName
+            ? "The form has been reset and is ready for the next enrollment. Downloads below are the packet that was just sent."
+            : "The waitlist packet PDF includes your completed enrollment form first, followed by the waitlist agreement. Bring the signed packet and payment to the center to secure your place on the waitlist."}
         </p>
 
         <div className="hero-cta">

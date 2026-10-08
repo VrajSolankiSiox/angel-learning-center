@@ -40,8 +40,8 @@ export function useSubmitEnrollmentEmail({ type, state, location, autoSend = fal
 
   useEffect(() => {
     if (!autoSend || !state || !storageKey) return;
-    if (autoStartedRef.current === storageKey) return;
-    autoStartedRef.current = storageKey;
+    if (autoStartedRef.current) return;
+    autoStartedRef.current = true;
     submit();
   }, [autoSend, storageKey, locationKey, state, location, submit]);
 

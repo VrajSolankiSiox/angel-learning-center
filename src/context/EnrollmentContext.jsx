@@ -81,6 +81,7 @@ export function EnrollmentProvider({ children }) {
 
   const redirectIfDoneBlocked = useCallback((viewId) => {
     if (viewId !== "done") return viewId;
+    if (allowDoneAfterSubmitRef.current) return viewId;
     const blocked = incompleteStepRef.current;
     if (!blocked) return viewId;
 
@@ -101,6 +102,7 @@ export function EnrollmentProvider({ children }) {
     const handleHashChange = () => {
       let h = (window.location.hash || "#home").slice(1) || "home";
       if (h === "auth") h = "home";
+      if (h !== "done" && h !== "waitlist-done") allowDoneAfterSubmitRef.current = false;
       const next = redirectIfDoneBlocked(h);
       if (next !== h) {
         window.location.hash = `#${next}`;
@@ -113,6 +115,7 @@ export function EnrollmentProvider({ children }) {
   }, [redirectIfDoneBlocked]);
 
   const navigateTo = useCallback((viewId) => {
+    if (viewId !== "done" && viewId !== "waitlist-done") allowDoneAfterSubmitRef.current = false;
     const next = redirectIfDoneBlocked(viewId);
     window.location.hash = `#${next}`;
     setCurrentView(next);
@@ -204,6 +207,7 @@ export function EnrollmentProvider({ children }) {
 
   useEffect(() => {
     if (currentView !== "done" || state.flowMode === "waitlist") return;
+    if (allowDoneAfterSubmitRef.current) return;
     const blocked = incompleteStepRef.current;
     if (!blocked) return;
     const next = redirectIfDoneBlocked("done");
@@ -523,6 +527,17 @@ export function EnrollmentProvider({ children }) {
     [applyCarryForward]
   );
 
+  const clearPacket = useCallback(() => {
+    allowDoneAfterSubmitRef.current = true;
+    setState((prev) => ({
+      completed: {},
+      data: {},
+      locationId: prev.locationId || "savannah",
+      siblings: [],
+      flowMode: prev.flowMode === "waitlist" ? "waitlist" : "full",
+    }));
+  }, []);
+
   const resetPacket = useCallback(() => {
     showConfirm({
       title: t("resetPacketTitle"),
@@ -663,6 +678,7 @@ export function EnrollmentProvider({ children }) {
     saveForm,
     autoSaveForm,
     resetPacket,
+    clearPacket,
     addSibling,
     uploadFile,
     flowMode: state.flowMode,

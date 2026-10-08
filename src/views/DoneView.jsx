@@ -17,11 +17,15 @@ function packetEmailAlreadySent(state) {
 }
 
 export function DoneView() {
-  const { state, activeLocation, showToast, t, navigateTo } = useEnrollment();
+  const { state, activeLocation, showToast, t, navigateTo, clearPacket } = useEnrollment();
   const alreadySent = useMemo(() => packetEmailAlreadySent(state), [state]);
   const [userConfirmed, setUserConfirmed] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [formCleared, setFormCleared] = useState(false);
+  const [receipt, setReceipt] = useState(null);
   const sendModalCancelRef = useRef(null);
+  const clearedRef = useRef(false);
+  const packetSnapshotRef = useRef(null);
 
   const { status: emailStatus, error: emailError, sentTo, documentCount, submit } = useSubmitEnrollmentEmail({
     type: "packet",
@@ -31,7 +35,7 @@ export function DoneView() {
   });
 
   const showCompleteUi =
-    alreadySent || userConfirmed || emailStatus === "sent" || emailStatus === "skipped";
+    formCleared || alreadySent || userConfirmed || emailStatus === "sent" || emailStatus === "skipped";
 
   const emailDelivered =
     alreadySent || emailStatus === "sent" || emailStatus === "skipped";
@@ -48,6 +52,28 @@ export function DoneView() {
     setUserConfirmed(true);
     submit();
   };
+
+  useEffect(() => {
+    if (clearedRef.current) return;
+    const justSent = emailStatus === "sent";
+    const previouslySent = alreadySent && emailStatus !== "sending" && emailStatus !== "error";
+    if (!justSent && !previouslySent) return;
+
+    const enNow = state.data?.enrollment || {};
+    const name =
+      [enNow.childFirst, enNow.childMI, enNow.childLast].filter(Boolean).join(" ").trim() ||
+      enNow.childPreferred ||
+      "Child";
+    clearedRef.current = true;
+    packetSnapshotRef.current = { data: state.data, location: activeLocation };
+    setReceipt({
+      childName: name,
+      subject: `Enrollment Packet for ${name}`,
+      inbox: sentTo || getNotificationEmail(activeLocation),
+    });
+    setFormCleared(true);
+    clearPacket();
+  }, [emailStatus, alreadySent, state, activeLocation, sentTo, clearPacket]);
 
   useEffect(() => {
     if (!sendModalOpen) return undefined;
@@ -85,8 +111,13 @@ export function DoneView() {
   }, [sendModalOpen]);
 
   const handleDownloadPdfs = async (which) => {
+    const snapshot = packetSnapshotRef.current;
     try {
-      await downloadPdfBundle({ state, location: activeLocation, which });
+      await downloadPdfBundle({
+        state: snapshot ? { data: snapshot.data, locationId: snapshot.location?.id } : state,
+        location: snapshot?.location || activeLocation,
+        which,
+      });
       showToast(
         which === "financial"
           ? "Financial PDF downloading…"
@@ -100,13 +131,14 @@ export function DoneView() {
     }
   };
 
-  const inbox = sentTo || getNotificationEmail(activeLocation);
   const en = state.data?.enrollment || {};
-  const childName =
+  const liveChildName =
     [en.childFirst, en.childMI, en.childLast].filter(Boolean).join(" ").trim() ||
     en.childPreferred ||
     "Child";
-  const subject = `Enrollment Packet for ${childName}`;
+  const inbox = receipt?.inbox || sentTo || getNotificationEmail(activeLocation);
+  const childName = receipt?.childName || liveChildName;
+  const subject = receipt?.subject || `Enrollment Packet for ${childName}`;
 
   return (
     <section id="view-done" className="view is-active">
@@ -226,11 +258,12 @@ export function DoneView() {
         </div>
 
         <p className="hint" id="pdfHint">
-          PDFs are generated in your browser from the filled answers. The email includes the packet PDF and each file
-          from Documents as its own attachment. The full packet download also appends those files after the forms.
+          {formCleared
+            ? "The form has been reset and is ready for the next enrollment. Downloads below are the packet that was just sent."
+            : "PDFs are generated in your browser from the filled answers. The email includes the packet PDF and each file from Documents as its own attachment. The full packet download also appends those files after the forms."}
         </p>
 
-        {showCompleteUi ? (
+        {showCompleteUi && !formCleared ? (
           <div className="hero-cta" style={{ marginBottom: "1.25rem" }}>
             <button type="button" className="btn btn-secondary" onClick={handleSendAgain} disabled={emailStatus === "sending"}>
               {emailStatus === "sending" ? "Sending…" : "Send packet again"}
@@ -238,7 +271,7 @@ export function DoneView() {
           </div>
         ) : null}
 
-        <FormList asLink={false} compact={true} id="doneList" />
+        {formCleared ? null : <FormList asLink={false} compact={true} id="doneList" />}
 
         <div className="hero-cta">
           <a
