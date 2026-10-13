@@ -1,19 +1,22 @@
 import React, { useState } from "react";
 import ALC_CONFIG from "../config";
 import { useEnrollment } from "../context/EnrollmentContext";
-import { filesToUploadMeta, shouldRetainUploadData } from "../utils/uploadFileData";
+import { filesToUploadMeta, IES_UPLOAD_ID, shouldRetainUploadData } from "../utils/uploadFileData";
 import { useFormDraft } from "../hooks/useFormDraft";
 import { completeFormAndGo } from "../utils/formNext";
 import { missingRequiredUploads } from "../utils/requiredDocuments";
+import { downloadBlankIesPdf } from "../pdf/pdfGenerator";
 
 export function UploadsView() {
   const { state, saveForm, uploadFile, showToast, t, navigateTo } = useEnrollment();
 
   const savedData = state.data?.uploads || {};
   const [upConfirm, setUpConfirm] = useState(!!savedData.upConfirm);
+  const [iesNotEligible, setIesNotEligible] = useState(!!savedData.iesNotEligible);
   const [uploadError, setUploadError] = useState("");
+  const [iesError, setIesError] = useState("");
 
-  useFormDraft("uploads", { upConfirm });
+  useFormDraft("uploads", { upConfirm, iesNotEligible });
 
   const files = state.data?.uploads?.files || {};
   const uploadDefs = ALC_CONFIG.uploads || [];
@@ -37,23 +40,51 @@ export function UploadsView() {
     e.target.value = "";
   };
 
+  const iesUploaded = (files[IES_UPLOAD_ID] || []).length > 0;
+  const iesSatisfied = iesUploaded || iesNotEligible;
+
+  const handleDownloadIes = async () => {
+    try {
+      await downloadBlankIesPdf();
+      showToast("Meal Benefit form downloaded");
+    } catch (err) {
+      console.error(err);
+      showToast("Meal Benefit form download failed");
+    }
+  };
+
   const handleNext = (e) => {
     const missing = missingRequiredUploads(state.data);
-    if (!upConfirm || missing.length > 0) {
-      const message = !upConfirm
-        ? "Confirm that the required documents are complete before finishing."
-        : `Upload every required document before finishing: ${missing.map((item) => item.label).join(", ")}`;
+    if (missing.length > 0) {
+      const message = `Upload every required document before finishing: ${missing.map((item) => item.label).join(", ")}`;
       setUploadError(message);
+      setIesError("");
+      showToast(message);
+      return;
+    }
+    if (!upConfirm) {
+      const message = "Confirm that the required documents are complete before finishing.";
+      setUploadError(message);
+      setIesError("");
+      showToast(message);
+      return;
+    }
+    if (!iesSatisfied) {
+      const message =
+        "Upload the completed Meal Benefit form, or check “I am not eligible for this” to continue without meal benefits.";
+      setUploadError("");
+      setIesError(message);
       showToast(message);
       return;
     }
 
     setUploadError("");
+    setIesError("");
     completeFormAndGo({
       event: e,
       saveForm,
       formId: "uploads",
-      getPayload: () => ({ upConfirm: true }),
+      getPayload: () => ({ upConfirm: true, iesNotEligible: iesUploaded ? false : iesNotEligible }),
       navigateTo,
       target: "done",
     });
@@ -85,7 +116,33 @@ export function UploadsView() {
           </strong>
           {statusContent}
         </div>
-        {def.note ? <p className="hint">{def.note}</p> : null}
+        {def.id === IES_UPLOAD_ID && !hasFiles ? (
+          <div className="ies-benefit-warning" role="alert">
+            <p>
+              You will not receive meal benefits if you do not upload the completed Meal Benefit (IES) form.
+            </p>
+            <button type="button" className="btn btn-secondary" onClick={handleDownloadIes}>
+              Download form
+            </button>
+          </div>
+        ) : null}
+        {def.note && def.id !== IES_UPLOAD_ID ? <p className="hint">{def.note}</p> : null}
+        {def.id === IES_UPLOAD_ID && !hasFiles ? (
+          <label className="check">
+            <input
+              type="checkbox"
+              name="iesNotEligible"
+              checked={iesNotEligible}
+              onChange={(e) => setIesNotEligible(e.target.checked)}
+            />
+            I am not eligible for this
+          </label>
+        ) : null}
+        {def.id === IES_UPLOAD_ID && iesError ? (
+          <p className="hint" role="alert">
+            {iesError}
+          </p>
+        ) : null}
         <label className="upload-file-label">
           <span>Choose file{def.multiple ? "(s)" : ""}</span>
           <input
