@@ -5,6 +5,7 @@ import { downloadPdfBundle, getSubmissionStorageKey } from "../pdf/pdfGenerator"
 import { useEnrollment } from "../context/EnrollmentContext";
 import { useSubmitEnrollmentEmail } from "../hooks/useSubmitEnrollmentEmail";
 import { getNotificationEmail } from "../utils/submitEnrollmentEmail";
+import { fireConfettiCelebration } from "../utils/confettiCelebration";
 
 const SEND_MODAL_DISCLAIMER =
   "Because space in our programs can fill up fast, completing this form doesn't automatically secure an immediate spot. Please connect directly with your chosen center location to discuss start dates and confirm your seat.";
@@ -26,6 +27,7 @@ export function DoneView() {
   const sendModalCancelRef = useRef(null);
   const clearedRef = useRef(false);
   const packetSnapshotRef = useRef(null);
+  const confettiFiredRef = useRef(false);
 
   const { status: emailStatus, error: emailError, sentTo, documentCount, submit } = useSubmitEnrollmentEmail({
     type: "packet",
@@ -49,9 +51,19 @@ export function DoneView() {
   const handleSendAgain = () => {
     const key = getSubmissionStorageKey(state, "packet");
     sessionStorage.removeItem(key);
+    confettiFiredRef.current = false;
     setUserConfirmed(true);
     submit();
   };
+
+  useEffect(() => {
+    if (confettiFiredRef.current) return;
+    if (!userConfirmed) return;
+    if (emailStatus !== "sent" && emailStatus !== "skipped") return;
+    confettiFiredRef.current = true;
+    const timer = window.setTimeout(() => fireConfettiCelebration(), 0);
+    return () => window.clearTimeout(timer);
+  }, [emailStatus, userConfirmed]);
 
   useEffect(() => {
     if (clearedRef.current) return;
@@ -139,17 +151,52 @@ export function DoneView() {
   const inbox = receipt?.inbox || sentTo || getNotificationEmail(activeLocation);
   const childName = receipt?.childName || liveChildName;
   const subject = receipt?.subject || `Enrollment Packet for ${childName}`;
+  const isSubmitting =
+    emailStatus === "sending" || (userConfirmed && !emailDelivered && emailStatus !== "error");
+  const submitted = emailDelivered;
+  const submittedHeadline = `Your enrollment form has been submitted for ${childName}.`;
+  const submittedNote =
+    t("formSubmittedNote") ||
+    "Angel Learning Center has received your packet. No further action is required unless the center contacts you.";
+  const submittingHeadline = t("formSubmittingHeadline") || "Submitting your enrollment form…";
+  const submittingNote =
+    t("formSubmittingNote") || "Please wait while we send your completed forms to the center.";
 
   return (
     <section id="view-done" className="view is-active">
       <div className="done-panel">
         {showCompleteUi ? (
-          <div className="success-banner">
+          <div
+            className={`success-banner${submitted ? " success-banner--celebrate" : ""}`}
+            role="status"
+            aria-live="polite"
+          >
+            {submitted ? (
+              <div className="success-banner-icon" aria-hidden="true">
+                ✓
+              </div>
+            ) : null}
             <div>
-              <strong data-i18n="doneStrong">Enrollment packet complete</strong>
-              <span data-i18n="doneText">
-                Download your completed forms below and bring them to your center.
-              </span>
+              {submitted ? (
+                <>
+                  <strong className="done-submitted-headline">{submittedHeadline}</strong>
+                  <span className="done-submitted-note" data-i18n="formSubmittedNote">
+                    {submittedNote}
+                  </span>
+                </>
+              ) : isSubmitting ? (
+                <>
+                  <strong className="done-submitted-headline">{submittingHeadline}</strong>
+                  <span className="done-submitted-note">{submittingNote}</span>
+                </>
+              ) : (
+                <>
+                  <strong data-i18n="doneStrong">{t("doneStrong") || "Enrollment packet complete"}</strong>
+                  <span data-i18n="doneText">
+                    {t("doneText") || "Download your completed forms below and bring them to your center."}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         ) : null}
@@ -181,14 +228,22 @@ export function DoneView() {
             <p className="eyebrow" data-i18n="doneEyebrow">
               {t("doneEyebrow") || "What happens next"}
             </p>
-            <h2 data-i18n="doneTitle">{t("doneTitle") || "You're all set"}</h2>
+            <h2 data-i18n="doneTitle">
+              {submitted
+                ? t("formSubmittedTitle") || "Submission complete"
+                : isSubmitting
+                  ? t("formSubmittingTitle") || "Sending to your center…"
+                  : t("doneTitle") || "You're all set"}
+            </h2>
             <p className="section-lead" data-i18n="doneLead">
-              {emailStatus === "sending"
-                ? "Sending your completed forms and PDF…"
+              {emailStatus === "sending" || isSubmitting
+                ? t("formSubmittingLead") ||
+                  "We're packaging your answers and documents. This usually takes a few seconds."
                 : emailStatus === "error"
-                  ? "Your packet is complete. Download the PDF below. We could not send the email automatically — see the message below."
+                  ? "Your forms are ready. Download the PDF below. We could not email the center automatically — see the message below."
                   : emailDelivered
-                    ? "Your completed forms and PDF have been sent to the center. You can also download a copy below."
+                    ? t("formSubmittedLead") ||
+                      `Your enrollment packet for ${childName} was emailed to the center. You can download a copy below for your records.`
                     : "Confirming your packet…"}
             </p>
 

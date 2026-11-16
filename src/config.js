@@ -148,7 +148,7 @@ export const ALC_CONFIG = {
   },
 
   forms: {
-    core: ["enrollment", "financial", "transport", "emergency", "ies", "handbook", "photo", "watchMeGrow", "policyAck", "safeSleep", "strollerRide", "uploads"],
+    core: ["enrollment", "financial", "transport", "emergency", /* "ies", */ "handbook", "photo", "watchMeGrow", "policyAck", "safeSleep", "strollerRide", "uploads"],
   },
 
   uploads: [
@@ -184,12 +184,12 @@ export const ALC_CONFIG = {
       multiple: true,
       note: "Required — government photo ID for parent(s)",
     },
-    {
-      id: "completed_ies",
-      label: "Completed Meal Benefit (IES) form",
-      required: false,
-      note: "Optional — download from the Meal Benefit step, complete on the official form, then upload here if applicable",
-    },
+    // {
+    //   id: "completed_ies",
+    //   label: "Completed Meal Benefit (IES) form",
+    //   required: false,
+    //   note: "Optional — download from the Meal Benefit step, complete on the official form, then upload here if applicable",
+    // },
     {
       id: "credit_card_front",
       label: "Credit card — front photo",

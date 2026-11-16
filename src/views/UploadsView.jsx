@@ -40,9 +40,6 @@ export function UploadsView() {
     e.target.value = "";
   };
 
-  const iesUploaded = (files[IES_UPLOAD_ID] || []).length > 0;
-  const iesSatisfied = iesUploaded || iesNotEligible;
-
   const handleDownloadIes = async () => {
     try {
       await downloadBlankIesPdf();
@@ -69,22 +66,13 @@ export function UploadsView() {
       showToast(message);
       return;
     }
-    if (!iesSatisfied) {
-      const message =
-        "Upload the completed Meal Benefit form, or check “I am not eligible for this” to continue without meal benefits.";
-      setUploadError("");
-      setIesError(message);
-      showToast(message);
-      return;
-    }
-
     setUploadError("");
     setIesError("");
     completeFormAndGo({
       event: e,
       saveForm,
       formId: "uploads",
-      getPayload: () => ({ upConfirm: true, iesNotEligible: iesUploaded ? false : iesNotEligible }),
+      getPayload: () => ({ upConfirm: true, iesNotEligible }),
       navigateTo,
       target: "done",
     });

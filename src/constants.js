@@ -37,15 +37,15 @@ export const ALL_FORMS = [
     always: false,
     requiresEmergencyMedical: true,
   },
-  {
-    id: "ies",
-    num: "05",
-    title: "Meal Benefit Form (IES)",
-    blurb: "Download official CACFP form → optional upload in Documents",
-    titleEs: "Formulario de comidas (IES)",
-    blurbEs: "Descargar formulario oficial CACFP",
-    always: true,
-  },
+  // {
+  //   id: "ies",
+  //   num: "05",
+  //   title: "Meal Benefit Form (IES)",
+  //   blurb: "Download official CACFP form → optional upload in Documents",
+  //   titleEs: "Formulario de comidas (IES)",
+  //   blurbEs: "Descargar formulario oficial CACFP",
+  //   always: true,
+  // },
   {
     id: "handbook",
     num: "06",
@@ -104,9 +104,9 @@ export const ALL_FORMS = [
     id: "uploads",
     num: "12",
     title: "Documents",
-    blurb: "SSNs, IDs, birth cert, shots, residency, optional IES & card photos",
+    blurb: "SSNs, IDs, birth cert, shots, residency, optional card photos",
     titleEs: "Documentos",
-    blurbEs: "SSN, IDs, acta, vacunas, IES",
+    blurbEs: "SSN, IDs, acta, vacunas",
     always: true,
   },
 ];
@@ -141,6 +141,16 @@ export const I18N = {
     confirmReset: "Clear all form progress on this device?",
     doneStrong: "Enrollment packet complete",
     doneText: "Download your completed forms below and bring them to your center.",
+    formSubmittedHeadline: "Your enrollment form has been submitted.",
+    formSubmittedNote:
+      "Angel Learning Center has received your packet. No further action is required unless the center contacts you.",
+    formSubmittedTitle: "Submission complete",
+    formSubmittedLead:
+      "Your completed forms and documents were emailed to the center. Download a copy below for your records.",
+    formSubmittingHeadline: "Submitting your enrollment form…",
+    formSubmittingNote: "Please wait while we send your completed forms to the center.",
+    formSubmittingTitle: "Sending to your center…",
+    formSubmittingLead: "We're packaging your answers and documents. This usually takes a few seconds.",
     doneEyebrow: "What Happens Next",
     doneTitle: "You're All Set",
     doneLead:
@@ -197,6 +207,7 @@ export const I18N = {
     nextTransport: "Next: Transportation →",
     nextEmergency: "Next: Emergency Form →",
     nextIes: "Next: Meal Benefit Form →",
+    nextHandbook: "Next: Parent Handbook →",
     finishPacket: "Finish Packet →",
     responsibleParty: "Responsible Party",
     legalName: "Full Legal Name",
@@ -297,6 +308,16 @@ export const I18N = {
     doneStrong: "Paquete enviado por correo al centro",
     doneText:
       "No se requiere inicio de sesión. Sus formularios se envían en PDF a Angel Learning Center; también puede recibir una copia.",
+    formSubmittedHeadline: "Su formulario de inscripción fue enviado.",
+    formSubmittedNote:
+      "Angel Learning Center recibió su paquete. No necesita hacer nada más a menos que el centro se comunique con usted.",
+    formSubmittedTitle: "Envío completo",
+    formSubmittedLead:
+      "Sus formularios y documentos se enviaron al centro por correo. Puede descargar una copia abajo.",
+    formSubmittingHeadline: "Enviando su formulario de inscripción…",
+    formSubmittingNote: "Espere mientras enviamos sus formularios al centro.",
+    formSubmittingTitle: "Enviando al centro…",
+    formSubmittingLead: "Estamos preparando sus respuestas y documentos. Suele tomar unos segundos.",
     doneEyebrow: "Qué sigue",
     doneTitle: "Todo listo",
     doneLead:
@@ -353,6 +374,7 @@ export const I18N = {
     nextTransport: "Siguiente: Transporte →",
     nextEmergency: "Siguiente: Emergencia →",
     nextIes: "Siguiente: Beneficios de comidas →",
+    nextHandbook: "Siguiente: Manual de padres →",
     finishPacket: "Terminar paquete →",
     responsibleParty: "Parte responsable",
     legalName: "Nombre legal completo",

@@ -60,7 +60,7 @@ export function EmergencyView() {
       formId: "emergency",
       getPayload: () => formData,
       navigateTo,
-      target: "ies",
+      target: "handbook",
     });
   };
 
@@ -239,7 +239,7 @@ export function EmergencyView() {
 
         <div className="form-actions">
           <button type="button" className="btn btn-primary" onClick={handleNext}>
-            {t("nextIes") || "Next: Meal benefit form →"}
+            {t("nextHandbook") || "Next: Parent Handbook →"}
           </button>
         </div>
       </form>

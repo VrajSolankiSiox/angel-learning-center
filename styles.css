@@ -1256,6 +1256,79 @@ input.signature {
   margin-bottom: 1.25rem;
 }
 
+.success-banner--celebrate {
+  animation: success-pop 0.55s ease-out;
+}
+
+.success-banner-icon {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.35rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 4px 14px rgba(0, 158, 74, 0.15);
+}
+
+.confetti-burst {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 300;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 28%;
+  left: var(--x);
+  width: 7px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--color);
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: confetti-fall 1.25s ease-out var(--delay) forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--drift), 55vh, 0) rotate(var(--spin));
+    opacity: 0;
+  }
+}
+
+@keyframes success-pop {
+  0% {
+    transform: scale(0.98);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.done-submitted-headline {
+  display: block;
+  font-size: 1.15rem;
+  line-height: 1.35;
+  color: var(--green);
+}
+
+.done-submitted-note {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .success-banner strong {
   display: block;
   color: var(--green);

@@ -79,12 +79,12 @@ export function FinancialView() {
 
   const hasTransport = needsTransportForm();
   const hasEmergency = needsEmergencyMedicalForm();
-  const nextTarget = hasTransport ? "transport" : hasEmergency ? "emergency" : "ies";
+  const nextTarget = hasTransport ? "transport" : hasEmergency ? "emergency" : "handbook";
   const nextText = hasTransport
     ? t("nextTransport") || "Next: Transportation →"
     : hasEmergency
       ? t("nextEmergency") || "Next: Emergency form →"
-      : t("nextIes") || "Next: Meal benefit form →";
+      : t("nextHandbook") || "Next: Parent Handbook →";
 
   const showPrefillNotice = !!(
     state.data?.enrollment?.childFirst ||

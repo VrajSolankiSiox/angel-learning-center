@@ -109,10 +109,10 @@ export function TransportView() {
     state.data?.enrollment?.dadFirst
   );
   const hasEmergency = needsEmergencyMedicalForm();
-  const nextTarget = hasEmergency ? "emergency" : "ies";
+  const nextTarget = hasEmergency ? "emergency" : "handbook";
   const nextText = hasEmergency
     ? t("nextEmergency") || "Next: Emergency form →"
-    : t("nextIes") || "Next: Meal benefit form →";
+    : t("nextHandbook") || "Next: Parent Handbook →";
 
   return (
     <section id="view-transport" className="view is-active">
