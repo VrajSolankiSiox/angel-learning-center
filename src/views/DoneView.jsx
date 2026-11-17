@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import FormList from "../components/FormList";
+import EnrollmentSubmissionDisclaimer from "../components/EnrollmentSubmissionDisclaimer";
 import { downloadPdfBundle, getSubmissionStorageKey } from "../pdf/pdfGenerator";
 import { useEnrollment } from "../context/EnrollmentContext";
 import { useSubmitEnrollmentEmail } from "../hooks/useSubmitEnrollmentEmail";
 import { getNotificationEmail } from "../utils/submitEnrollmentEmail";
 import { fireConfettiCelebration } from "../utils/confettiCelebration";
 
-const SEND_MODAL_DISCLAIMER =
-  "Because space in our programs can fill up fast, completing this form doesn't automatically secure an immediate spot. Please connect directly with your chosen center location to discuss start dates and confirm your seat.";
 
 function packetEmailAlreadySent(state) {
   if (!state) return false;
@@ -282,6 +281,13 @@ export function DoneView() {
                 </strong>
               </div>
             </div>
+
+            {submitted || isSubmitting ? (
+              <EnrollmentSubmissionDisclaimer
+                id="enrollmentSubmissionDisclaimer"
+                className="enrollment-submission-disclaimer--done"
+              />
+            ) : null}
           </>
         )}
 
@@ -364,9 +370,9 @@ export function DoneView() {
                   A Quick Note on Your Enrollment!
                 </h2>
                 <p className="modal-message modal-message--lead">We&apos;re Excited to Welcome You!</p>
-                <p id="enrollmentSendModalMessage" className="modal-message modal-message--disclaimer">
-                  {SEND_MODAL_DISCLAIMER}
-                </p>
+                <div id="enrollmentSendModalMessage" className="modal-disclaimer-scroll">
+                  <EnrollmentSubmissionDisclaimer showTitle className="enrollment-submission-disclaimer--modal" />
+                </div>
                 <div className="modal-actions modal-actions--send">
                   <button
                     type="button"

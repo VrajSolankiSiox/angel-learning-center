@@ -2,10 +2,15 @@ import ALC_CONFIG from "../config";
 import { normalizePrograms } from "./programSelection";
 
 const CC_EMAIL = "info@angellearningcenter.com";
+const CC_EMAILS = ["info@angellearningcenter.com", "ssurati@angellearningcenter.com"];
 const FROM_EMAIL = `Angel Learning Center <${CC_EMAIL}>`;
 
 export function getEnrollmentCcEmail() {
-  return CC_EMAIL;
+  return CC_EMAILS.join(", ");
+}
+
+export function getEnrollmentCcEmails() {
+  return [...CC_EMAILS];
 }
 
 export function getEnrollmentFromEmail() {

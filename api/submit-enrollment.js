@@ -3,7 +3,7 @@ import Busboy from "busboy";
 
 const DEFAULT_TO = "info@angellearningcenter.com";
 const DEFAULT_FROM = "Angel Learning Center <info@angellearningcenter.com>";
-const DEFAULT_CC = "info@angellearningcenter.com";
+const DEFAULT_CC_RECIPIENTS = ["info@angellearningcenter.com", "ssurati@angellearningcenter.com"];
 const LOCAL_DEV_NOTIFICATION_EMAIL = "dev4@sioxglobal.com";
 /** Vercel serverless request body limit is ~4.5 MB; stay under for binary PDF. */
 const MAX_PDF_BYTES = 4 * 1024 * 1024;
@@ -32,8 +32,19 @@ function resolveMailTargets(req, meta, location) {
       LOCAL_DEV_NOTIFICATION_EMAIL;
     return { toAddress: to, ccAddresses: [] };
   }
-  const ccAddress = process.env.ENROLLMENT_CC_EMAIL || DEFAULT_CC;
-  return { toAddress: centerTo, ccAddresses: [ccAddress] };
+  const ccFromEnv = process.env.ENROLLMENT_CC_EMAIL
+    ? process.env.ENROLLMENT_CC_EMAIL.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_CC_RECIPIENTS;
+  const centerLower = String(centerTo).toLowerCase();
+  const seenCc = new Set();
+  const ccAddresses = [];
+  for (const addr of ccFromEnv) {
+    const key = String(addr).toLowerCase();
+    if (!key || key === centerLower || seenCc.has(key)) continue;
+    seenCc.add(key);
+    ccAddresses.push(addr);
+  }
+  return { toAddress: centerTo, ccAddresses };
 }
 
 function json(res, status, body) {
@@ -247,7 +258,7 @@ export default async function handler(req, res) {
       ok: true,
       id: result.data?.id,
       to: toAddress,
-      cc: ccAddresses[0] || null,
+      cc: ccAddresses.length ? ccAddresses : null,
       localDev,
     });
   } catch (err) {

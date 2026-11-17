@@ -13,6 +13,7 @@ import {
 
 const API_PATH = "/api/submit-enrollment";
 const CC_EMAIL = "info@angellearningcenter.com";
+const CC_EMAILS = ["info@angellearningcenter.com", "ssurati@angellearningcenter.com"];
 export const LOCAL_DEV_NOTIFICATION_EMAIL = "dev4@sioxglobal.com";
 const SEND_PENDING = "__sending__";
 /** Coalesce parallel calls (e.g. React Strict Mode) before sessionStorage is set. */
@@ -134,7 +135,7 @@ export function getNotificationEmail(location) {
 }
 
 export function getEnrollmentCcEmail() {
-  return CC_EMAIL;
+  return CC_EMAILS.join(", ");
 }
 
 async function buildPdfForEmail({ type, state, location, appendUploads = true }) {

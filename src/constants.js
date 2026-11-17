@@ -151,6 +151,9 @@ export const I18N = {
     formSubmittingNote: "Please wait while we send your completed forms to the center.",
     formSubmittingTitle: "Sending to your center…",
     formSubmittingLead: "We're packaging your answers and documents. This usually takes a few seconds.",
+    enrollmentDisclaimerTitle: "Enrollment Submission Disclaimer",
+    enrollmentDisclaimerThanks:
+      "Thank you for choosing Angel Learning Center! We look forward to welcoming your family.",
     doneEyebrow: "What Happens Next",
     doneTitle: "You're All Set",
     doneLead:
@@ -318,6 +321,9 @@ export const I18N = {
     formSubmittingNote: "Espere mientras enviamos sus formularios al centro.",
     formSubmittingTitle: "Enviando al centro…",
     formSubmittingLead: "Estamos preparando sus respuestas y documentos. Suele tomar unos segundos.",
+    enrollmentDisclaimerTitle: "Aviso de envío de inscripción",
+    enrollmentDisclaimerThanks:
+      "¡Gracias por elegir Angel Learning Center! Esperamos darle la bienvenida a su familia.",
     doneEyebrow: "Qué sigue",
     doneTitle: "Todo listo",
     doneLead:
